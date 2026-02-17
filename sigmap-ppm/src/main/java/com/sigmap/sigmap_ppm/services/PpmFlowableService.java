@@ -681,6 +681,19 @@ public class PpmFlowableService {
             if (isDraftSave) {
                 String pid = task.getProcessInstanceId();
 
+                String rectifDraftTaskId = null;
+                try {
+                    rectifDraftTaskId = (String) runtimeService.getVariable(pid, "rectifDraftTaskId");
+                } catch (Exception ignore) {
+                }
+                if (rectifDraftTaskId == null || !rectifDraftTaskId.equals(task.getId())) {
+                    try {
+                        runtimeService.removeVariable(pid, "rectifDraftVersion");
+                    } catch (Exception ignore) {
+                    }
+                    runtimeService.setVariable(pid, "rectifDraftTaskId", task.getId());
+                }
+
                 Integer rectifDraftVersion = null;
                 try {
                     rectifDraftVersion = (Integer) runtimeService.getVariable(pid, "rectifDraftVersion");
@@ -779,15 +792,46 @@ public class PpmFlowableService {
             // --- Normal path (validate != null): update PPM with versioning BEFORE completing ---
             log.info("Inspecting request.getPpm() for task [{}]: {}", taskId, request.getPpm());
 
-            Ppm updatedPpm = ppmService.updateWithVersioning(id, version, request.getPpm());
-            if (updatedPpm == null) {
-                TaskDTO errorResponse = new TaskDTO();
-                errorResponse.setStatus("Failed to update PPM object");
-                return errorResponse;
+            String pid = task.getProcessInstanceId();
+            Integer rectifDraftVersionForValidate = null;
+            try {
+                rectifDraftVersionForValidate = (Integer) runtimeService.getVariable(pid, "rectifDraftVersion");
+            } catch (Exception ignore) {
             }
-            latestPpm = updatedPpm;
-            runtimeService.setVariable(task.getProcessInstanceId(), "version", latestPpm.getVersion());
-            log.info("Updated ppm after versioning, coms: {}", latestPpm.getComs());
+
+            if (rectifDraftVersionForValidate != null) {
+                if (!(request.getPpm() instanceof PpmWithLotsRequestDto)) {
+                    TaskDTO errorResponse = new TaskDTO();
+                    errorResponse.setStatus(
+                            "Validation update requires PpmWithLotsRequestDto payload when rectifDraftVersion exists");
+                    return errorResponse;
+                }
+
+                log.info("RECTIF VALIDATE: update in place (id={},ver={}) instead of bumping again", id,
+                        rectifDraftVersionForValidate);
+                Ppm updatedPpm = ppmService.updateWithRelationships(id, rectifDraftVersionForValidate,
+                        (PpmWithLotsRequestDto) request.getPpm());
+
+                if (updatedPpm == null) {
+                    TaskDTO errorResponse = new TaskDTO();
+                    errorResponse.setStatus("Failed to update PPM object (rectif validate update in place)");
+                    return errorResponse;
+                }
+
+                latestPpm = updatedPpm;
+                runtimeService.setVariable(pid, "version", rectifDraftVersionForValidate);
+                log.info("Updated ppm after update-in-place, coms: {}", latestPpm.getComs());
+            } else {
+                Ppm updatedPpm = ppmService.updateWithVersioning(id, version, request.getPpm());
+                if (updatedPpm == null) {
+                    TaskDTO errorResponse = new TaskDTO();
+                    errorResponse.setStatus("Failed to update PPM object");
+                    return errorResponse;
+                }
+                latestPpm = updatedPpm;
+                runtimeService.setVariable(task.getProcessInstanceId(), "version", latestPpm.getVersion());
+                log.info("Updated ppm after versioning, coms: {}", latestPpm.getComs());
+            }
         }
         // ==========================================================
 
@@ -1462,10 +1506,6 @@ public class PpmFlowableService {
             log.warn("SAFETY#2: failed to ensure CPMP before completing task: {}", e.getMessage());
         }
 
-        try {
-            runtimeService.removeVariable(task.getProcessInstanceId(), "rectifDraftVersion");
-        } catch (Exception ignore) {}
-
         String processInstanceId = task.getProcessInstanceId();
         Integer ppmId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer ppmVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
@@ -1474,6 +1514,16 @@ public class PpmFlowableService {
         taskService.complete(taskId, varsToSet);
 
         updatePpmEtapeProcess(processInstanceId, ppmId, ppmVer);
+
+        try {
+            runtimeService.removeVariable(processInstanceId, "rectifDraftVersion");
+        } catch (Exception ignore) {
+        }
+        try {
+            runtimeService.removeVariable(processInstanceId, "rectifDraftTaskId");
+        } catch (Exception ignore) {
+        }
+        // ---------------------------------------------------------------------------
 
         // --- Response ---
         TaskDTO response = new TaskDTO();
