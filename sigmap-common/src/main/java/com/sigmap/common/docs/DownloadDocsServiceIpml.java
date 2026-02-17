@@ -252,7 +252,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
     @Override
     public byte[] downloadPpmArgumentDocument(String alfrescoId)
-            throws IOException, DocsNotFoundException {
+            throws IOException, DocsNotFoundException, PpmNotFound, AcNotFound {
 
         Docs doc = docsService.findByAlfescoId(alfrescoId)
                 .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
@@ -268,8 +268,8 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
         Integer ppmId = link.getPpmId();
         Integer ppmVersion = link.getPpmVer();
-        List<Integer> comIds = currentUserService.getCurrentUserComIds();
-        ReunionArgumentDocuments dto = ppmService.listDocPpm(comIds, ppmId, ppmVersion);
+        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
+        ReunionArgumentDocuments dto = ppmService.listDocPpm(acIds, ppmId, ppmVersion);
 
         boolean allowed =
                 dto.getDocumentCPMP().contains(alfrescoId)
@@ -319,9 +319,9 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         Integer dacId = link.getDacId();
         Integer dacVersion = link.getDacVer();
 
-        List<Integer> comIds = currentUserService.getCurrentUserComIds();
+        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
 
- /*       ReunionArgumentDocuments dto = dacService.listDocDac(comIds, dacId, dacVersion);
+       ReunionArgumentDocuments dto = dacService.listDocDac(acIds, dacId, dacVersion);
 
         boolean allowed =
                 dto.getDocumentCPMP().contains(alfrescoId)
@@ -330,7 +330,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
         if (allowed) {
             return docsService.downloadDocument(alfrescoId);
-        }*/
+        }
 
         throw new AccessDeniedException("Access denied");
     }

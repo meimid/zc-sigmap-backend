@@ -40,13 +40,17 @@ import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.model_dac.ModelDac;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
+import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -56,7 +60,9 @@ import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionRepository;
 import com.sigmap.common.reunion.ReunionSpecifications;
+import com.sigmap.common.reunion.response.ExtraitResponse;
 import com.sigmap.common.reunion.response.PvResponse;
+import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.SocieteDacID;
 import com.sigmap.common.societe_dac.SocieteDacRepository;
@@ -141,6 +147,7 @@ public class DacServiceImpl implements DacService {
     private final com.sigmap.common.model_dac.ModelDacRepository modelDacRepository;
     private final ComService comService;
     private final ReunionRepository reunionRepository;
+    private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -2276,10 +2283,90 @@ public class DacServiceImpl implements DacService {
         
         return response;
     }
+
+
+
+    @Override
+    public ReunionArgumentDocuments listDocDac(List<Integer> acIds, Integer dacId, Integer dacVersion) {
+
+        ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
+        if (acIds == null || acIds.isEmpty()) return dto;
+        if (dacId == null || dacVersion == null) throw new DacNotFound(null);
+
+        boolean allowed = dacRepository.exists(
+                DacSpecifications.hasIdVerAndAcIn(dacId, dacVersion, acIds)
+        );
+        if (!allowed) return dto;
+        // 2) Load reunions once
+        Specification<Reunion> spec = Specification
+                .where(ReunionSpecifications.deleted(false))
+                .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
+                .and(ReunionSpecifications.hasDacId(dacId))
+                .and(ReunionSpecifications.hasDacVer(dacVersion));
+
+        List<Reunion> reunions = reunionRepository.findAll(spec);
+        log.info("listDocDac reunions fetched: {}", reunions.size());
+
+        // 3) Process reunions
+        for (Reunion r : reunions) {
+
+            String reunionComType =
+                    r.getCom() != null && r.getCom().getComType() != null && r.getCom().getComType().getCode() != null
+                            ? r.getCom().getComType().getCode()
+                            : null;
+
+            if (reunionComType == null || reunionComType.isEmpty()) {
+                log.warn("Skipping reunion {}: reunionComType is null/empty", r.getId());
+                continue;
+            }
+
+            Set<String> alfrescoIds = r.getReunionDacs().stream()
+                    .filter(Objects::nonNull)
+                    // if you have rd.getReunionDacDocs()
+                    .flatMap(rd -> rd.getReunionDacDocs().stream())
+                    .filter(Objects::nonNull)
+                    .map(dacDoc ->
+                            dacId.equals(dacDoc.getDacId())
+                                    && dacVersion.equals(dacDoc.getDacVer())
+                                    && dacDoc.getDocs() != null
+                                    ? dacDoc.getDocs().getAlfresco_id()
+                                    : null
+                    )
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            if (alfrescoIds.isEmpty()) {
+                log.debug("Reunion {} type={} skipped: no docs", r.getId(), reunionComType);
+                continue;
+            }
+
+            log.debug("Reunion {} type={} docsCount={}", r.getId(), reunionComType, alfrescoIds.size());
+
+            if ("CPMP".equals(reunionComType)) {
+                dto.getDocumentCPMP().addAll(alfrescoIds);
+            }
+            if ("CNCMP-S".equals(reunionComType)) {
+                dto.getDocumentCNCMPSpecialise().addAll(alfrescoIds);
+            }
+            if ("CNCMP-P".equals(reunionComType)) {
+                dto.getDocumentCNCMPPermanente().addAll(alfrescoIds);
+            }
+        }
+
+        log.info("listDocDac END | cpmp={} perm={} spec={}",
+                dto.getDocumentCPMP().size(),
+                dto.getDocumentCNCMPPermanente().size(),
+                dto.getDocumentCNCMPSpecialise().size());
+
+        return dto;
+    }
     @Override
     public PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion) {
 
         PvResponse dto = new PvResponse();
+        Set<String> pvCpmp = new HashSet<>();
+        Set<String> pvCncmpSpecialise = new HashSet<>();
+        Set<String>pvCpcmpPermanant=new HashSet<>();
 
         Set<String> userComTypes = comService.findAll(
                         Specification.where(ComSpecifications.deleted(false))
@@ -2290,23 +2377,6 @@ public class DacServiceImpl implements DacService {
 
         log.warn("START listPvComByDac: comIds={}, dacId={}, ver={}", comIds, dacId, dacVersion);
 
-        for (Integer comId : comIds) {
-
-            log.warn("Processing comId {}", comId);
-
-            Optional<Com> comOpt = comService.findOne(
-                    Specification.where(
-                            ComSpecifications.deleted(false)
-                                    .and(ComSpecifications.id(comId))));
-
-            if (comOpt.isEmpty()) {
-                log.error("COM {} not found or deleted!", comId);
-                continue;
-            }
-
-            String userComType = comOpt.get().getComType().getCode().trim();
-            log.warn("COM {} type = {}", comId, userComType);
-
             Specification<Reunion> spec = Specification
                     .where(ReunionSpecifications.deleted(false))
                     .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
@@ -2315,7 +2385,6 @@ public class DacServiceImpl implements DacService {
 
             List<Reunion> reunions = reunionRepository.findAll(spec);
 
-            log.warn("Reunions found for COM {} = {}", comId, reunions.size());
 
             for (Reunion r : reunions) {
 
@@ -2333,46 +2402,94 @@ public class DacServiceImpl implements DacService {
 
                 String reunionComType = r.getCom().getComType().getCode().trim();
 
-                log.warn("Adding PV based on userComType={} and reunionComType={}", userComType, reunionComType);
 
-                switch (userComType) {
+                for (String userType : userComTypes) {
 
-                    case "CPMP":
-                        if ("CPMP".equals(reunionComType)) {
-                            dto.getPvCPMP().add(pvAlfrescoId);
-                        }
-                        if ("CNCMP-P".equals(reunionComType)) {
-                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
-                        }
-                        break;
 
-                    case "CNCMP-P":
-                        if ("CNCMP-P".equals(reunionComType)) {
-                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
-                        }
-                        if ("CPMP".equals(reunionComType)) {
-                            dto.getPvCPMP().add(pvAlfrescoId);
-                        }
-                        break;
+                    switch (userType) {
 
-                    case "CNCMP-S":
-                        if ("CNCMP-S".equals(reunionComType) &&
-                                (userComTypes.contains("CNCMP-S") || userComTypes.contains("CNCMP-P"))) {
-                            dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
-                        }
-                        if ("CNCMP-P".equals(reunionComType)) {
-                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
-                        }
-                        break;
+                        case "CPMP":
+                            if ("CPMP".equals(reunionComType)&&pvCpmp.add(pvAlfrescoId)) {
+                                dto.getPvCPMP().add(pvAlfrescoId);
+                            }
+                            if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
+                                dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                            }
+                            break;
 
-                    default:
-                        log.warn("Unknown COM type: {}", userComType);
+                        case "CNCMP-P":
+                            if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
+                                dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                            }
+                            if ("CPMP".equals(reunionComType)&&pvCpmp.add(pvAlfrescoId)) {
+                                dto.getPvCPMP().add(pvAlfrescoId);
+                            }
+                            break;
+
+                        case "CNCMP-S":
+                            // Your original condition is redundant inside this case, but keep it if you want:
+                            if ("CNCMP-S".equals(reunionComType)&&pvCncmpSpecialise.add(pvAlfrescoId)
+                                    && (userComTypes.contains("CNCMP-S") || userComTypes.contains("CNCMP-P"))) {
+                                dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                            }
+                            if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
+                                dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                            }
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                }
+            }
+
+                log.warn("FINAL PV RESPONSE: cpmp={}, perm={}, spec={}",
+                dto.getPvCPMP(), dto.getPvCNCMPPermanente(), dto.getPvCNCMPSpecialise());
+
+        return dto;
+    }
+
+    @Override
+    public ExtraitResponse findAllExtraits(List<Integer> acIds, Integer dacId, Integer dacVer) {
+        ExtraitResponse dto = new ExtraitResponse();
+        Set<String> seenCpmp = new HashSet<>();
+        Set<String> seenPermanent = new HashSet<>();
+        List<ProcessVerbalReunionExtrait> extraits = processVerbalReunionExtraitService
+                .findExtraitsByDacAndAcs(acIds, dacId, dacVer);
+
+        for (ProcessVerbalReunionExtrait ex : extraits) {
+
+            Optional<Reunion> reunionOpt = reunionRepository.findByProcessVerbalId(ex.getPvId());
+
+            if (reunionOpt.isEmpty())
+                continue;
+
+            Reunion reunion = reunionOpt.get();
+
+            String typeCom = reunion.getCom().getComType().getCode();
+            log.info("EX: id={} type={} doc={} alfresco={} acId {}",
+                    ex.getExtraitId(),
+                    ex.getExtraitType(),
+                    ex.getDoc()!=null,
+                    ex.getDoc()!=null ? ex.getDoc().getAlfresco_id() : null,
+                    ex.getAcId()
+            );
+
+            if ("CPMP".equals(typeCom)){
+
+                String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
+                if (alfrescoId != null&&seenCpmp.add(alfrescoId)) {
+                    dto.getExtraitCPMP().add(alfrescoId);
+                }
+            }
+            else if ("CNCMP-P".equals(typeCom)){
+                String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
+                if (alfrescoId != null&&seenPermanent.add(alfrescoId)) {
+                    dto.getExtraitCNCMPP().add(alfrescoId);
                 }
             }
         }
-
-        log.warn("FINAL PV RESPONSE: cpmp={}, perm={}, spec={}",
-                dto.getPvCPMP(), dto.getPvCNCMPPermanente(), dto.getPvCNCMPSpecialise());
 
         return dto;
     }
