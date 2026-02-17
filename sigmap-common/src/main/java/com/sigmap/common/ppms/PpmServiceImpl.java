@@ -4594,7 +4594,10 @@ public class PpmServiceImpl implements PpmService {
         if (Boolean.TRUE.equals(existingPpm.getIsDeleted())) {
             throw new RuntimeException("Cannot update a deleted Ppm with ID " + ppmId + " and version " + ppmVer);
         }
-        if (existingPpm.getStatus() == null || existingPpm.getStatus() != ProcessStatus.BROUILLON) {
+
+        if (existingPpm.getStatus() == null
+                || (existingPpm.getStatus() != ProcessStatus.BROUILLON
+                && existingPpm.getStatus() != ProcessStatus.EN_TRAITEMENT)) {
             throw new InvalidPpmStatusException("PPM can only be updated in draft status. Current status ID: " +
                     (existingPpm.getStatus() != null ? existingPpm.getStatus() : "null"));
         }
@@ -4731,7 +4734,7 @@ public class PpmServiceImpl implements PpmService {
                     realisation.setBeneficiaire(
                             realisationRequest.getBeneficiaire() != null ? realisationRequest.getBeneficiaire()
                                     : realisation.getBeneficiaire());
-                    // unchanged scalar setters omitted for brevity
+
                     realisation.setTypeMarcher(
                             realisationRequest.getTypeMarcher() != null ? realisationRequest.getTypeMarcher()
                                     : realisation.getTypeMarcher());
@@ -5128,6 +5131,7 @@ public class PpmServiceImpl implements PpmService {
 
         return existingPpm;
     }
+
 
     /**
      * Creates and saves a new PPM version with all relationships established.
