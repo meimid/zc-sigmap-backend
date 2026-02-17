@@ -509,6 +509,13 @@ public class PpmServiceImpl implements PpmService {
     public ReunionArgumentDocuments listDocPpm(List<Integer> acIds, Integer ppmId, Integer ppmVersion) throws PpmNotFound, AcNotFound {
 
         ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
+        List<Integer> comIds=currentUserService.getCurrentUserComIds();
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
 
         if (acIds == null || acIds.isEmpty()) return dto;
         if (ppmId == null || ppmVersion == null) throw new PpmIdNotFound("", null);
@@ -562,8 +569,7 @@ public class PpmServiceImpl implements PpmService {
             if ("CPMP".equals(reunionComType)) {
                 dto.getDocumentCPMP().addAll(pvAlfrescoIds);
             }
-            if ("CNCMP-S".equals(reunionComType)) {
-                dto.getDocumentCNCMPSpecialise().addAll(pvAlfrescoIds);
+            if ("CNCMP-S".equals(reunionComType)&&(userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) {                dto.getDocumentCNCMPSpecialise().addAll(pvAlfrescoIds);
             }
             if ("CNCMP-P".equals(reunionComType)) {
                 dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);

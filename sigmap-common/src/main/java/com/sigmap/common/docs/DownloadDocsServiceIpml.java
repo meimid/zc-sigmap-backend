@@ -58,6 +58,7 @@ import com.sigmap.common.reunion.ReunionSpecifications;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
+import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionPpm.ReunionPpmDocSpecifications;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDocService;
@@ -478,8 +479,35 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
     @Override
     public byte[] downloadDacArgumentDocumentForReunion(String alfrescoId) throws IOException, DocsNotFoundException {
-        return new byte[0];
+
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        ReunionDacDoc link = reunionDacDocService.findOne(
+                ReunionDacDocSpecifications.docId(doc.getId())
+        ).orElseThrow(() -> new DocsNotFoundException("No DAC link found for docId " + doc.getId()));
+
+        if (link.getDacId() == null || link.getDacVer() == null) {
+            throw new DocsNotFoundException("DAC id/version missing for docId " + doc.getId());
+        }
+
+        Integer dacId = link.getDacId();
+        Integer dacVersion = link.getDacVer();
+
+        List<Integer> comIds = currentUserService.getCurrentUserComIds();
+
+        ReunionArgumentDocuments dto = listDocDacForReunion(comIds, dacId, dacVersion);
+
+        boolean allowed =
+                dto.getDocumentCPMP().contains(alfrescoId)
+                        || dto.getDocumentCNCMPPermanente().contains(alfrescoId)
+                        || dto.getDocumentCNCMPSpecialise().contains(alfrescoId);
+
+        if (allowed) return docsService.downloadDocument(alfrescoId);
+
+        throw new AccessDeniedException("Access denied");
     }
+
 
     public PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion) {
 
@@ -778,80 +806,96 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
         return dto;
     }
-
-    public ReunionArgumentDocuments listDocDac(List<Integer> comIds, Integer dacId, Integer dacVersion) {
+    public ReunionArgumentDocuments listDocDacForReunion(List<Integer> comIds, Integer dacId, Integer dacVersion) {
 
         ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
+
         if (comIds == null || comIds.isEmpty()) return dto;
         if (dacId == null || dacVersion == null) throw new DacNotFound(null);
 
-        boolean allowed = dacRepository.exists(
-                DacSpecifications.hasIdVerAndAcIn(dacId, dacVersion, comIds)
-        );
-        if (!allowed) return dto;
-        // 2) Load reunions once
+        // user COM types (same as your PPM logic)
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .collect(Collectors.toSet());
+
+        if (userComTypes.isEmpty()) return dto;
+
+        // reunions containing this dac (keep your old specs)
         Specification<Reunion> spec = Specification
                 .where(ReunionSpecifications.deleted(false))
-                .and(ReunionSpecifications.status(ReunionStatus.CLOTURER)
-                        .or(ReunionSpecifications.status(ReunionStatus.EN_COURS))
-                        .or(ReunionSpecifications.status(ReunionStatus.VALIDER)))
+                .and(
+                        ReunionSpecifications.status(ReunionStatus.CLOTURER)
+                                .or(ReunionSpecifications.status(ReunionStatus.EN_COURS))
+                                .or(ReunionSpecifications.status(ReunionStatus.VALIDER))
+                )
                 .and(ReunionSpecifications.hasDacId(dacId))
                 .and(ReunionSpecifications.hasDacVer(dacVersion));
 
         List<Reunion> reunions = reunionRepository.findAll(spec);
-        log.info("listDocDac reunions fetched: {}", reunions.size());
 
-        // 3) Process reunions
+        // optional dedupe sets
+        Set<String> cpmp = new HashSet<>();
+        Set<String> perm = new HashSet<>();
+        Set<String> specSet = new HashSet<>();
+
         for (Reunion r : reunions) {
+            if (r == null || r.getCom() == null || r.getCom().getComType() == null) continue;
 
-            String reunionComType =
-                    r.getCom() != null && r.getCom().getComType() != null && r.getCom().getComType().getCode() != null
-                            ? r.getCom().getComType().getCode()
-                            : null;
+            String reunionComType = r.getCom().getComType().getCode();
+            if (reunionComType == null) continue;
+            reunionComType = reunionComType.trim();
 
-            if (reunionComType == null || reunionComType.isEmpty()) {
-                log.warn("Skipping reunion {}: reunionComType is null/empty", r.getId());
-                continue;
-            }
+            if (r.getReunionDacs() == null) continue;
 
-            Set<String> alfrescoIds = r.getReunionDacs().stream()
-                    .filter(Objects::nonNull)
-                    // if you have rd.getReunionDacDocs()
-                    .flatMap(rd -> rd.getReunionDacDocs().stream())
-                    .filter(Objects::nonNull)
-                    .map(dacDoc ->
-                            dacId.equals(dacDoc.getDacId())
-                                    && dacVersion.equals(dacDoc.getDacVer())
-                                    && dacDoc.getDocs() != null
-                                    ? dacDoc.getDocs().getAlfresco_id()
-                                    : null
-                    )
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
+            for (ReunionDac rd : r.getReunionDacs()) {
+                if (rd == null || rd.getReunionDacDocs() == null) continue;
 
-            if (alfrescoIds.isEmpty()) {
-                log.debug("Reunion {} type={} skipped: no docs", r.getId(), reunionComType);
-                continue;
-            }
+                for (ReunionDacDoc dacDoc : rd.getReunionDacDocs()) {
+                    if (dacDoc == null) continue;
 
-            log.debug("Reunion {} type={} docsCount={}", r.getId(), reunionComType, alfrescoIds.size());
+                    if (!Objects.equals(dacDoc.getDacId(), dacId)) continue;
+                    if (!Objects.equals(dacDoc.getDacVer(), dacVersion)) continue;
 
-            if ("CPMP".equals(reunionComType)) {
-                dto.getDocumentCPMP().addAll(alfrescoIds);
-            }
-            if ("CNCMP-S".equals(reunionComType)) {
-                dto.getDocumentCNCMPSpecialise().addAll(alfrescoIds);
-            }
-            if ("CNCMP-P".equals(reunionComType)) {
-                dto.getDocumentCNCMPPermanente().addAll(alfrescoIds);
+                    if (dacDoc.getDocs() == null) continue;
+                    String alfId = dacDoc.getDocs().getAlfresco_id();
+                    if (alfId == null || alfId.isBlank()) continue;
+
+                    // SAME mapping rules as PV method (COM-based)
+                    for (String userType : userComTypes) {
+                        switch (userType) {
+                            case "CPMP":
+                                if ("CPMP".equals(reunionComType)) cpmp.add(alfId);
+                                if ("CNCMP-P".equals(reunionComType)) perm.add(alfId);
+                                break;
+
+                            case "CNCMP-P":
+                                if ("CNCMP-P".equals(reunionComType)) perm.add(alfId);
+                                if ("CPMP".equals(reunionComType)) cpmp.add(alfId);
+                                break;
+
+                            case "CNCMP-S":
+                                if ("CNCMP-P".equals(reunionComType)) perm.add(alfId);
+                                if ("CNCMP-S".equals(reunionComType)) specSet.add(alfId);
+                                break;
+
+                            default:
+                                break;
+                        }
+                    }
+                }
             }
         }
 
-        log.info("listDocDac END | cpmp={} perm={} spec={}",
-                dto.getDocumentCPMP().size(),
-                dto.getDocumentCNCMPPermanente().size(),
-                dto.getDocumentCNCMPSpecialise().size());
+        dto.getDocumentCPMP().addAll(cpmp);
+        dto.getDocumentCNCMPPermanente().addAll(perm);
+        dto.getDocumentCNCMPSpecialise().addAll(specSet);
 
         return dto;
     }
+
 }
