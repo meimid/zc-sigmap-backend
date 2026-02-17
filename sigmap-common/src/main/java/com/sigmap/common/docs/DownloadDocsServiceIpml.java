@@ -10,8 +10,10 @@ import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacSpecifications;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
@@ -34,6 +36,7 @@ import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.PpmSpecifications;
+import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
@@ -69,10 +72,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -99,6 +99,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         private final ProcessVerbalReunionExtraitDacService processVerbalReunionExtraitDacService;
         private final ComService comService;
         private final ReunionRepository reunionRepository;
+        private final DacRepository dacRepository;
     @Override
     public byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, PaaNotFound {
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
@@ -251,7 +252,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
     }
 
     @Override
-    public byte[] downloadPpmArgumentDocument(String alfrescoId)
+    public byte[] downloadPpmArgumentDocumentForPpm(String alfrescoId)
             throws IOException, DocsNotFoundException, PpmNotFound, AcNotFound {
 
         Docs doc = docsService.findByAlfescoId(alfrescoId)
@@ -302,7 +303,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
     }
 
     @Override
-    public byte[] downloadDacArgumentDocument(String alfrescoId)
+    public byte[] downloadDacArgumentDocumentForDac(String alfrescoId)
             throws IOException, DocsNotFoundException {
 
         Docs doc = docsService.findByAlfescoId(alfrescoId)
@@ -443,6 +444,43 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
         throw new AccessDeniedException("Access denied");
     }
+
+    @Override
+    public byte[] downloadPpmArgumentDocumentForReunion(String alfrescoId) throws IOException, DocsNotFoundException {
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        ReunionPpmDoc link = reunionPpmDocService.findOne(
+                ReunionPpmDocSpecifications.docId(doc.getId())
+        ).orElseThrow(() -> new DocsNotFoundException("No PPM link found for docId " + doc.getId()));
+
+
+        if (link.getPpmId() == null || link.getPpmVer() == null) {
+            throw new DocsNotFoundException("PPM id/version missing for docId " + doc.getId());
+        }
+
+        Integer ppmId = link.getPpmId();
+        Integer ppmVersion = link.getPpmVer();
+        List<Integer> comIds = currentUserService.getCurrentUserComIds();
+        ReunionArgumentDocuments dto = listDocPpmForReunion(comIds, ppmId, ppmVersion);
+
+        boolean allowed =
+                dto.getDocumentCPMP().contains(alfrescoId)
+                        || dto.getDocumentCNCMPPermanente().contains(alfrescoId)
+                        || dto.getDocumentCNCMPSpecialise().contains(alfrescoId);
+
+        if (allowed) {
+            return docsService.downloadDocument(alfrescoId);
+        }
+
+        throw new AccessDeniedException("Access denied");
+    }
+
+    @Override
+    public byte[] downloadDacArgumentDocumentForReunion(String alfrescoId) throws IOException, DocsNotFoundException {
+        return new byte[0];
+    }
+
     public PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion) {
 
         PvResponse dto = new PvResponse();
@@ -642,6 +680,177 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
         log.warn("FINAL PV RESPONSE: cpmp={}, perm={}, spec={}",
                 dto.getPvCPMP(), dto.getPvCNCMPPermanente(), dto.getPvCNCMPSpecialise());
+
+        return dto;
+    }
+
+    public ReunionArgumentDocuments listDocPpmForReunion(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+        ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
+
+
+        log.info("listDocPpm START | comIdsSize={} ppmId={} ppmVersion={}",
+                (comIds == null ? 0 : comIds.size()), ppmId, ppmVersion);
+
+        // Fail closed
+        if (comIds == null || comIds.isEmpty()) {
+            log.warn("listDocPpm aborted: comIds is empty");
+            return dto;
+        }
+        if (ppmId == null || ppmVersion == null) {
+            log.error("listDocPpm aborted: ppmId/ppmVersion is null (ppmId={}, ppmVersion={})", ppmId, ppmVersion);
+            throw new PpmIdNotFound("",null);
+        }
+
+        // 1) Load user COM types once
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
+
+        if (userComTypes.isEmpty()) {
+            log.warn("listDocPpm aborted: no user COM types found for comIdsSize={}", comIds.size());
+            return dto;
+        }
+
+        log.debug("listDocPpm userComTypes={}", userComTypes);
+
+        // 2) Load reunions once
+        Specification<Reunion> spec = Specification
+                .where(ReunionSpecifications.deleted(false))
+                .and(ReunionSpecifications.status(ReunionStatus.CLOTURER)
+                        .or(ReunionSpecifications.status(ReunionStatus.EN_COURS))
+                        .or(ReunionSpecifications.status(ReunionStatus.VALIDER)))
+                .and(ReunionSpecifications.hasPpmId(ppmId))
+                .and(ReunionSpecifications.hasPpmVer(ppmVersion));
+
+        List<Reunion> reunions = reunionRepository.findAll(spec);
+        log.info("listDocPpm reunions fetched: {}", reunions.size());
+
+        // 3) Process reunions
+        for (Reunion r : reunions) {
+
+            String reunionComType =
+                    r.getCom() != null && r.getCom().getComType() != null && r.getCom().getComType().getCode() != null
+                            ? r.getCom().getComType().getCode()
+                            : null;
+
+
+            if (reunionComType == null || reunionComType.isEmpty()) {
+                log.warn("Skipping reunion {}: reunionComType is null/empty", r.getId());
+                continue;
+            }
+
+            Set<String> pvAlfrescoIds = r.getReunionPpms().stream()
+                    .filter(Objects::nonNull)
+                    .flatMap(rp -> rp.getReunionPpmDocs().stream())
+                    .filter(Objects::nonNull)
+                    .map(ppmDoc ->ppmDoc.getPpmId().equals(ppmId)
+                            &&ppmDoc.getPpmVer().equals(ppmVersion) &&
+                            ppmDoc.getDocs() != null ? ppmDoc.getDocs().getAlfresco_id() : null)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            if (pvAlfrescoIds.isEmpty()) {
+                log.debug("Reunion {} type={} skipped: no docs", r.getId(), reunionComType);
+                continue;
+            }
+
+            log.debug("Reunion {} type={} docsCount={}", r.getId(), reunionComType, pvAlfrescoIds.size());
+
+            if ("CPMP".equals(reunionComType)) {
+                dto.getDocumentCPMP().addAll(pvAlfrescoIds);
+            }
+            if ("CNCMP-S".equals(reunionComType)&&(userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) {
+                dto.getDocumentCNCMPSpecialise().addAll(pvAlfrescoIds);
+            }
+            if ("CNCMP-P".equals(reunionComType)) {
+                dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);
+            }
+
+        }
+
+        log.info("listDocPpm END | cpmp={} perm={} spec={}",
+                dto.getDocumentCPMP().size(),
+                dto.getDocumentCNCMPPermanente().size(),
+                dto.getDocumentCNCMPSpecialise().size());
+
+        return dto;
+    }
+
+    public ReunionArgumentDocuments listDocDac(List<Integer> comIds, Integer dacId, Integer dacVersion) {
+
+        ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
+        if (comIds == null || comIds.isEmpty()) return dto;
+        if (dacId == null || dacVersion == null) throw new DacNotFound(null);
+
+        boolean allowed = dacRepository.exists(
+                DacSpecifications.hasIdVerAndAcIn(dacId, dacVersion, comIds)
+        );
+        if (!allowed) return dto;
+        // 2) Load reunions once
+        Specification<Reunion> spec = Specification
+                .where(ReunionSpecifications.deleted(false))
+                .and(ReunionSpecifications.status(ReunionStatus.CLOTURER)
+                        .or(ReunionSpecifications.status(ReunionStatus.EN_COURS))
+                        .or(ReunionSpecifications.status(ReunionStatus.VALIDER)))
+                .and(ReunionSpecifications.hasDacId(dacId))
+                .and(ReunionSpecifications.hasDacVer(dacVersion));
+
+        List<Reunion> reunions = reunionRepository.findAll(spec);
+        log.info("listDocDac reunions fetched: {}", reunions.size());
+
+        // 3) Process reunions
+        for (Reunion r : reunions) {
+
+            String reunionComType =
+                    r.getCom() != null && r.getCom().getComType() != null && r.getCom().getComType().getCode() != null
+                            ? r.getCom().getComType().getCode()
+                            : null;
+
+            if (reunionComType == null || reunionComType.isEmpty()) {
+                log.warn("Skipping reunion {}: reunionComType is null/empty", r.getId());
+                continue;
+            }
+
+            Set<String> alfrescoIds = r.getReunionDacs().stream()
+                    .filter(Objects::nonNull)
+                    // if you have rd.getReunionDacDocs()
+                    .flatMap(rd -> rd.getReunionDacDocs().stream())
+                    .filter(Objects::nonNull)
+                    .map(dacDoc ->
+                            dacId.equals(dacDoc.getDacId())
+                                    && dacVersion.equals(dacDoc.getDacVer())
+                                    && dacDoc.getDocs() != null
+                                    ? dacDoc.getDocs().getAlfresco_id()
+                                    : null
+                    )
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            if (alfrescoIds.isEmpty()) {
+                log.debug("Reunion {} type={} skipped: no docs", r.getId(), reunionComType);
+                continue;
+            }
+
+            log.debug("Reunion {} type={} docsCount={}", r.getId(), reunionComType, alfrescoIds.size());
+
+            if ("CPMP".equals(reunionComType)) {
+                dto.getDocumentCPMP().addAll(alfrescoIds);
+            }
+            if ("CNCMP-S".equals(reunionComType)) {
+                dto.getDocumentCNCMPSpecialise().addAll(alfrescoIds);
+            }
+            if ("CNCMP-P".equals(reunionComType)) {
+                dto.getDocumentCNCMPPermanente().addAll(alfrescoIds);
+            }
+        }
+
+        log.info("listDocDac END | cpmp={} perm={} spec={}",
+                dto.getDocumentCPMP().size(),
+                dto.getDocumentCNCMPPermanente().size(),
+                dto.getDocumentCNCMPSpecialise().size());
 
         return dto;
     }

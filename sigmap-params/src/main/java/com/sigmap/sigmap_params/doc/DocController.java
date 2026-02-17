@@ -200,9 +200,23 @@ public class DocController {
     }
 
     @PostMapping("/download/meeting-ppm")
-    public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+    public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocumentForPpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
 
-        byte[]  fileContent = downloadDocsService.downloadPpmArgumentDocument(alfrescoId.getId());
+        byte[]  fileContent = downloadDocsService.downloadPpmArgumentDocumentForPpm(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download/meeting-ppm-for-meeting")
+    public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocumentMeeting(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+
+        byte[]  fileContent = downloadDocsService.downloadPpmArgumentDocumentForReunion(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
                 fileContent,
                 false,
@@ -216,7 +230,21 @@ public class DocController {
     @PostMapping("/download/meeting-dac")
     public ResponseEntity<DocumentResponseDTO> downloadDacArgumentDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
 
-        byte[]  fileContent = downloadDocsService.downloadDacArgumentDocument(alfrescoId.getId());
+        byte[]  fileContent = downloadDocsService.downloadDacArgumentDocumentForDac(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download/meeting-dac-for-meeting")
+    public ResponseEntity<DocumentResponseDTO> downloadDacArgumentDocumentForMeeting(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadDacArgumentDocumentForReunion(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
                 fileContent,
                 false,
