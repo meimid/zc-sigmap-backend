@@ -1,6 +1,7 @@
 package com.sigmap.common.process_verbal_reunion_extrait_dac;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -9,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface ProcessVerbalReunionExtraitDacRepository extends JpaRepository
-        <ProcessVerbalReunionExtraitDac, ProcessVerbalReunionExtraitDacId> {
+        <ProcessVerbalReunionExtraitDac, ProcessVerbalReunionExtraitDacId>, JpaSpecificationExecutor<ProcessVerbalReunionExtraitDac> {
 
     // find all DAC relations for one extrait
     List<ProcessVerbalReunionExtraitDac> findByPvIdAndAcId(Integer pvId, Integer acId);

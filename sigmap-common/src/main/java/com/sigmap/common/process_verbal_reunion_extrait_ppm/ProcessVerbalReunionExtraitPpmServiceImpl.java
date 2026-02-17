@@ -72,4 +72,9 @@ public class ProcessVerbalReunionExtraitPpmServiceImpl
     public Optional<ProcessVerbalReunionExtraitPpm> findOne(Specification<ProcessVerbalReunionExtraitPpm> spec) {
         return repository.findOne(spec);
     }
+
+    @Override
+    public List<ProcessVerbalReunionExtraitPpm> findAll(Specification<ProcessVerbalReunionExtraitPpm> spec) {
+        return repository.findAll(spec);
+    }
 }

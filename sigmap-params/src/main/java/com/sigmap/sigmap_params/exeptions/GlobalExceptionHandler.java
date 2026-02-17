@@ -57,6 +57,7 @@ import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.reunion.exception.*;
+import com.sigmap.common.reunionPpm.exceptions.DossierAlreadyReservedForOtherMeetingInProgressStatus;
 import com.sigmap.common.seuil_general.exception.SeuilGeneralNotFound;
 import com.sigmap.common.seuil_general.exception.SeuilWithTypeMarcheExiste;
 import com.sigmap.common.societe.exception.*;
@@ -1474,6 +1475,19 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage(
                 "reunion.comtype.invalid",
                 new Object[]{ex.getReunionId(), ex.getComTypeCode()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DossierAlreadyReservedForOtherMeetingInProgressStatus.class)
+    public ResponseEntity<ErrorResponse> handleDossierAlreadyReservedForOtherMeetingInProgress(
+            DossierAlreadyReservedForOtherMeetingInProgressStatus ex
+    ) {
+        String message = messageSource.getMessage(
+                "ppm.dossier.alreadyReserved.otherMeeting.inProgress",
+                new Object[]{ex.getRef()},
                 getLocal()
         );
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
