@@ -614,8 +614,7 @@ public class PpmFlowableService {
         // Validate process variables
         if (id == null || version == null) {
             TaskDTO errorResponse = new TaskDTO();
-            errorResponse
-                    .setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
+            errorResponse.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
             return errorResponse;
         }
 
@@ -708,7 +707,6 @@ public class PpmFlowableService {
                 Ppm updatedPpm;
 
                 if (rectifDraftVersion == null) {
-                    // FIRST draft save => create one new version
                     log.info("RECTIF DRAFT: first save draft => versioning from (id={},ver={})", id, version);
                     updatedPpm = ppmService.updateWithVersioning(id, version, request.getPpm());
                     if (updatedPpm == null) {
@@ -717,11 +715,17 @@ public class PpmFlowableService {
                         return errorResponse;
                     }
 
-                    runtimeService.setVariable(pid, "rectifDraftVersion", updatedPpm.getVersion());
-                    runtimeService.setVariable(pid, "version", updatedPpm.getVersion());
-                    latestPpm = updatedPpm;
+                    if (updatedPpm.getVersion() != null && !updatedPpm.getVersion().equals(version)) {
+                        runtimeService.setVariable(pid, "rectifDraftVersion", updatedPpm.getVersion());
+                        runtimeService.setVariable(pid, "version", updatedPpm.getVersion());
+                        log.info("RECTIF DRAFT: created draft version={} for pid={}", updatedPpm.getVersion(), pid);
+                    } else {
+                        // No changes => no bump => keep rectifDraftVersion null so next real change can bump
+                        runtimeService.setVariable(pid, "version", version);
+                        log.info("RECTIF DRAFT: no changes detected => no version bump, keep rectifDraftVersion NULL (pid={})", pid);
+                    }
 
-                    log.info("RECTIF DRAFT: created draft version={} for pid={}", updatedPpm.getVersion(), pid);
+                    latestPpm = updatedPpm;
 
                 } else {
                     if (!(request.getPpm() instanceof PpmWithLotsRequestDto)) {
@@ -774,7 +778,7 @@ public class PpmFlowableService {
                 response.setTaskDefinitionKey(task.getTaskDefinitionKey());
                 response.setProcessInstanceId(pid);
                 response.setId(id);
-                response.setVersion(latestPpm.getVersion());
+                response.setVersion((Integer) runtimeService.getVariable(pid, "version"));
                 response.setNewStatus(latestPpm.getStatus());
                 response.setValidate(null);
                 response.setTraceability(varsToSet);
@@ -802,6 +806,10 @@ public class PpmFlowableService {
             try {
                 rectifDraftVersionForValidate = (Integer) runtimeService.getVariable(pid, "rectifDraftVersion");
             } catch (Exception ignore) {
+            }
+
+            if (rectifDraftVersionForValidate != null && rectifDraftVersionForValidate.equals(version)) {
+                rectifDraftVersionForValidate = null;
             }
 
             if (rectifDraftVersionForValidate != null) {
