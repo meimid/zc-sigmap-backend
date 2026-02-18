@@ -1659,7 +1659,7 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     public Optional<Reunion> findOneReunion(Specification<Reunion> specifications) {
-        return Optional.empty();
+        return repository.findOne(specifications);
     }
 
 
