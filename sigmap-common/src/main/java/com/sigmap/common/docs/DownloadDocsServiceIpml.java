@@ -142,7 +142,8 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
         Reunion reunion = reunionService.findOne(
                 Specification.where(ReunionSpecifications.deleted(false))
-                        .and(ReunionSpecifications.status(ReunionStatus.CLOTURER).or(ReunionSpecifications.status(ReunionStatus.VALIDER)))
+                        .and(ReunionSpecifications.status(ReunionStatus.CLOTURER)
+                                .or(ReunionSpecifications.status(ReunionStatus.VALIDER)))
                         .and(ReunionSpecifications.pvId(pv.getId()))
         ).orElseThrow(() -> new DocsNotFoundException("Reunion not found/closed for pvId " + pv.getId()));
 
@@ -303,18 +304,28 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
     @Override
     public byte[] downloadModelPpm(String alfrescoId) throws IOException, DocsNotFoundException, PpmNotFound {
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
-
+        List<Integer> comIds = currentUserService.getCurrentUserComIds();
         Docs doc = docsService.findByAlfescoId(alfrescoId)
                 .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
 
         ModelPpm model = modelPpmService.findOne(
                 ModelPpmSpecifications.docId(doc.getId())
         ).orElseThrow(() -> new PpmNotFound("Model PPM not found for doc " + doc.getId(), null, null));
+        Ppm ppm = model.getPpm();
+        Integer ppmAcId=ppm.getAc().getId();
+        List<Integer> ppmComIds = ppm.getComs()
+                .stream()
+                .map(Com::getId)
+                .toList();
 
-        if (model.getPpm().getAc() != null && model.getPpm().getAc().getId() != null && acIds.contains(model.getPpm().getAc().getId())) {
+        boolean acMatch = ppmAcId != null && acIds.contains(ppmAcId);
+
+        boolean comMatch = ppmComIds.stream()
+                .anyMatch(comIds::contains);
+
+        if (acMatch || comMatch) {
             return docsService.downloadDocument(alfrescoId);
         }
-
         throw new AccessDeniedException("Access denied");
     }
 
@@ -421,6 +432,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
             throws IOException, DocsNotFoundException, PpmNotFound, AcNotFound {
 
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
+        List<Integer> comIds=currentUserService.getCurrentUserAcIds();
 
         Docs doc = docsService.findByAlfescoId(alfrescoId)
                 .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
@@ -430,7 +442,13 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
                 .orElseThrow(() -> new PpmNotFound("PPM not found for doc " + doc.getId(), null, null));
 
         Integer ppmAcId = (ppm.getAc() != null ? ppm.getAc().getId() : null);
-        if (ppmAcId != null && acIds.contains(ppmAcId)) {
+        List<Integer> ppmComIds=ppm.getComs().stream().map(Com::getId).collect(Collectors.toList());
+        boolean acMatch = ppmAcId != null && acIds.contains(ppmAcId);
+
+        boolean comMatch = ppmComIds.stream()
+                .anyMatch(comIds::contains);
+
+        if (acMatch || comMatch) {
             return docsService.downloadDocument(alfrescoId);
         }
 
