@@ -22,7 +22,10 @@ public interface DownloadDocsService {
     byte[] downloadAgpmDoc(String alfrescoId) throws IOException, DocsNotFoundException, AgpmNotFound, AcNotFound;
     byte[] downloadPpmDoc(String alfrescoId) throws IOException, DocsNotFoundException, PpmNotFound, AcNotFound;
     byte[] downloadPaaDoc(String alfrescoId) throws IOException, DocsNotFoundException, PaaNotFound, AcNotFound;
-     byte[] downloadPpmArgumentDocumentForReunion(String alfrescoId) throws IOException, DocsNotFoundException;
+    byte[] downloadPpmArgumentDocumentForReunion(String alfrescoId) throws IOException, DocsNotFoundException;
     byte[] downloadDacArgumentDocumentForReunion(String alfrescoId) throws IOException, DocsNotFoundException;
+    byte[] downloadComDocument(String alfrescoId) throws IOException, DocsNotFoundException;
+    byte[] downloadDacDocsDocument(String alfrescoId) throws IOException, DocsNotFoundException ;
 
-}
+
+    }

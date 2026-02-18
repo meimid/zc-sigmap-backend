@@ -604,6 +604,9 @@ public class PpmServiceImpl implements PpmService {
                 continue;
 
             Reunion reunion = reunionOpt.get();
+            if(!reunion.getStatus().equals(ReunionStatus.CLOTURER)){
+                continue;
+            }
 
             String typeCom = reunion.getCom().getComType().getCode();
             log.info("EX: id={} type={} doc={} alfresco={} acId {}",

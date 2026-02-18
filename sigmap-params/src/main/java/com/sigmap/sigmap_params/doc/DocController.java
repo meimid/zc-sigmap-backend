@@ -19,6 +19,7 @@ import com.sigmap.common.reunion.ReunionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -255,5 +256,33 @@ public class DocController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/download/com")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
+    public ResponseEntity<DocumentResponseDTO> downloadComDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadComDocument(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download/dac")
+    public ResponseEntity<DocumentResponseDTO> downloadDacDocsDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadDacDocsDocument(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
 
 }

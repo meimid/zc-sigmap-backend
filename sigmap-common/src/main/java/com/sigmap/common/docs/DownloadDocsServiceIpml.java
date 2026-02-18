@@ -6,6 +6,7 @@ import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.config.ReunionStatus;
@@ -14,6 +15,8 @@ import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacSpecifications;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.dac_docs.DacDocsRepository;
+import com.sigmap.common.dac_docs.DacDocsSpecifications;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
@@ -100,7 +103,8 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         private final ProcessVerbalReunionExtraitDacService processVerbalReunionExtraitDacService;
         private final ComService comService;
         private final ReunionRepository reunionRepository;
-        private final DacRepository dacRepository;
+        private final ComRepository comRepository;
+        private final DacDocsRepository dacDocsRepository;
     @Override
     public byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, PaaNotFound {
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
@@ -191,8 +195,18 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         ProcessVerbalReunionExtrait extrait = processVerbalReunionExtraitService.findOne(
                 ProcessVerbalReunionExtraitSpecifications.docId(doc.getId())
         ).orElseThrow(() -> new ExtraitNotFound("Extrait not found for doc " + doc.getId()));
+        List<Integer> comIds=currentUserService.getCurrentUserComIds();
+        Optional <Reunion> reunion=reunionService.findOne(ReunionSpecifications.pvId(extrait.getPvId()).and(ReunionSpecifications.deleted(false)));
+        if(reunion.isPresent()
+                &&reunion.get().getCom().getId()!=null
+                &&comIds.contains(reunion.get().getCom().getId())) {
+            return docsService.downloadDocument(alfrescoId);
 
-        if (ExtraitType.PAR_AC.equals(extrait.getExtraitType())) {
+        }
+
+
+        if (ExtraitType.PAR_AC.equals(extrait.getExtraitType())&&
+                reunion.get().getStatus().equals(ReunionStatus.CLOTURER)) {
             List<Integer> acIds = currentUserService.getCurrentUserAcIds();
 
             if (extrait.getAcId() != null && acIds.contains(extrait.getAcId())) {
@@ -245,7 +259,8 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         }
 
 
-        if(extraits.contains(alfrescoId)){
+        if(extraits.contains(alfrescoId)&&
+                reunion.get().getStatus().equals(ReunionStatus.CLOTURER)){
             return docsService.downloadDocument(alfrescoId);
         }
 
@@ -896,6 +911,50 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         dto.getDocumentCNCMPSpecialise().addAll(specSet);
 
         return dto;
+    }
+
+    @Override
+    public byte[] downloadComDocument(String alfrescoId)
+            throws IOException, DocsNotFoundException {
+
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() ->
+                        new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        boolean linked = comRepository.exists(
+                Specification.where(ComSpecifications.deleted(false))
+                        .and(ComSpecifications.hasDocId(doc.getId()))
+        );
+
+        if (!linked) {
+            throw new DocsNotFoundException("No COM link found for docId " + doc.getId());
+        }
+
+        return docsService.downloadDocument(alfrescoId);
+    }
+
+    @Override
+    public byte[] downloadDacDocsDocument(String alfrescoId) throws IOException, DocsNotFoundException {
+
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
+        if (acIds == null || acIds.isEmpty()) {
+            throw new AccessDeniedException("Access denied");
+        }
+
+        boolean allowed = dacDocsRepository.exists(
+                Specification.where(DacDocsSpecifications.hasDocId(doc.getId()))
+                        .and(DacDocsSpecifications.ppmAcIn(acIds))
+        );
+
+        if (allowed) {
+            return docsService.downloadDocument(alfrescoId);
+
+        }
+        throw new AccessDeniedException("Access denied");
+
     }
 
 }
