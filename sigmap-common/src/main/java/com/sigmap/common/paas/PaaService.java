@@ -42,6 +42,9 @@ public interface PaaService {
 
     List<Paa> findAll();
 
+    List<Paa> findAll(Specification<Paa> spec);
+
+
     /**
      * Return a page of Paa entities based on the given specification and pageable.
      *

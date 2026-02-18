@@ -115,6 +115,7 @@ public interface PpmMapper {
 
     // CHANGE HERE: The return type is now RealisationResponseDTO
     @Mapping(target = "financements", expression = "java(mapFinancements(realisation.getFinancements()))")
+    @Mapping(target = "usedInDac", source = "usedInDac")
     RealisationResponseDTO mapRealisation(Realisation realisation);
 
     /**

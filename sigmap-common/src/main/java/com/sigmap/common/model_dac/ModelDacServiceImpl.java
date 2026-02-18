@@ -11,6 +11,7 @@ import com.sigmap.common.entity.CompositeId;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -86,5 +87,10 @@ public class ModelDacServiceImpl implements ModelDacService {
     @Override
     public boolean isDocumentRelatedToDacShortlistForUser(String alfrescoId, String userId) {
         return modelDacRepository.isDocumentRelatedToDacShortlistForUser(alfrescoId, userId);
+    }
+
+    @Override
+    public Optional<ModelDac> findOne(Specification<ModelDac> specification) {
+        return modelDacRepository.findOne(specification);
     }
 }

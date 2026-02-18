@@ -4,6 +4,7 @@ import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Optional;
 
@@ -14,4 +15,5 @@ public interface ModelAgpmService {
     Optional<ModelAgpm> getModel(Integer agpmId, Integer agpmVer);
 
     void removeModel(Integer agpmId, Integer agpmVer);
+    Optional<ModelAgpm> findOne(Specification<ModelAgpm> spec);
 }

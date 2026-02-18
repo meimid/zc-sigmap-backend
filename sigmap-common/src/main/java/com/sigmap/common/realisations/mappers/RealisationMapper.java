@@ -106,6 +106,7 @@ public interface RealisationMapper {
     Realisation updateRealisationFromRequest(RealisationRequest request, @MappingTarget Realisation realisation);
 
     @Mapping(target = "statut", source = "statut")
+    @Mapping(target = "usedInDac", source = "usedInDac")
     RealisationResponseDTO mapWithDTO(Realisation realisation);
 
     @Mapping(target = "financementId", source = "id.financementId")

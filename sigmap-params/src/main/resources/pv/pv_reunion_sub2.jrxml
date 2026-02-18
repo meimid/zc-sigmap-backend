@@ -7,7 +7,7 @@
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 	<subDataset name="Dataset1" uuid="2101a4cb-b120-4dac-9add-f4828119eb04">
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter.jrdax"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="com" class="java.lang.Integer"/>
 		<parameter name="code" class="java.lang.String"/>
@@ -60,8 +60,8 @@ SELECT distinct
          WHEN 'FALSE' THEN 'Reporté'
         else  'Avis'
         end as decision,
-    p.ref,
-    p.nom,
+    d.ref_dac as ref,
+    '' as nom,
     p.annee,
     p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
      m.com_id,

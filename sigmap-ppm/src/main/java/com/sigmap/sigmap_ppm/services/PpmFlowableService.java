@@ -8,6 +8,7 @@ import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.CncmpDecision;
 import com.sigmap.common.config.RealisationStatus;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
@@ -19,9 +20,12 @@ import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.mappers.PpmMapper;
+import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationService;
+import com.sigmap.common.reunionPpm.ReunionPpmRepository;
+import com.sigmap.common.reunionPpm.ReunionPpmSpecifications;
 import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
@@ -99,6 +103,8 @@ public class PpmFlowableService {
     private DataSource dataSource;
     @Autowired
     private PpmRepository ppmRepository;
+    @Autowired
+    private ReunionPpmRepository reunionPpmRepository;
 
     /* ======================= small helpers ======================= */
 
@@ -608,8 +614,7 @@ public class PpmFlowableService {
         // Validate process variables
         if (id == null || version == null) {
             TaskDTO errorResponse = new TaskDTO();
-            errorResponse
-                    .setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
+            errorResponse.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
             return errorResponse;
         }
 
@@ -665,24 +670,179 @@ public class PpmFlowableService {
             }
         }
 
-        // --- If editable, update PPM (versioning) ---
+        // ==========================================================
+        // SAVE DRAFT (RECTIF) LOGIC
+        // ==========================================================
+        boolean isDraftSave = (request.getValidate() == null);
+
         if (Boolean.TRUE.equals(isUpdatable)) {
             if (request.getPpm() == null) {
                 TaskDTO errorResponse = new TaskDTO();
                 errorResponse.setStatus("Ppm object is required in the request when isUpdatable is true");
                 return errorResponse;
             }
-            log.info("Inspecting request.getPpm() for task [{}]: {}", taskId, request.getPpm());
-            Ppm updatedPpm = ppmService.updateWithVersioning(id, request.getPpm());
-            if (updatedPpm == null) {
-                TaskDTO errorResponse = new TaskDTO();
-                errorResponse.setStatus("Failed to update PPM object");
-                return errorResponse;
+
+            if (isDraftSave) {
+                String pid = task.getProcessInstanceId();
+
+                String rectifDraftTaskId = null;
+                try {
+                    rectifDraftTaskId = (String) runtimeService.getVariable(pid, "rectifDraftTaskId");
+                } catch (Exception ignore) {
+                }
+                if (rectifDraftTaskId == null || !rectifDraftTaskId.equals(task.getId())) {
+                    try {
+                        runtimeService.removeVariable(pid, "rectifDraftVersion");
+                    } catch (Exception ignore) {
+                    }
+                    runtimeService.setVariable(pid, "rectifDraftTaskId", task.getId());
+                }
+
+                Integer rectifDraftVersion = null;
+                try {
+                    rectifDraftVersion = (Integer) runtimeService.getVariable(pid, "rectifDraftVersion");
+                } catch (Exception ignore) {
+                }
+
+                Ppm updatedPpm;
+
+                if (rectifDraftVersion == null) {
+                    log.info("RECTIF DRAFT: first save draft => versioning from (id={},ver={})", id, version);
+                    updatedPpm = ppmService.updateWithVersioning(id, version, request.getPpm());
+                    if (updatedPpm == null) {
+                        TaskDTO errorResponse = new TaskDTO();
+                        errorResponse.setStatus("Failed to save draft (versioning)");
+                        return errorResponse;
+                    }
+
+                    if (updatedPpm.getVersion() != null && !updatedPpm.getVersion().equals(version)) {
+                        runtimeService.setVariable(pid, "rectifDraftVersion", updatedPpm.getVersion());
+                        runtimeService.setVariable(pid, "version", updatedPpm.getVersion());
+                        log.info("RECTIF DRAFT: created draft version={} for pid={}", updatedPpm.getVersion(), pid);
+                    } else {
+                        // No changes => no bump => keep rectifDraftVersion null so next real change can bump
+                        runtimeService.setVariable(pid, "version", version);
+                        log.info("RECTIF DRAFT: no changes detected => no version bump, keep rectifDraftVersion NULL (pid={})", pid);
+                    }
+
+                    latestPpm = updatedPpm;
+
+                } else {
+                    if (!(request.getPpm() instanceof PpmWithLotsRequestDto)) {
+                        TaskDTO errorResponse = new TaskDTO();
+                        errorResponse.setStatus("Draft update requires PpmWithLotsRequestDto payload");
+                        return errorResponse;
+                    }
+
+                    log.info("RECTIF DRAFT: subsequent save => update in place (id={},ver={})", id, rectifDraftVersion);
+                    updatedPpm = ppmService.updateWithRelationships(id, rectifDraftVersion,
+                            (PpmWithLotsRequestDto) request.getPpm());
+
+                    if (updatedPpm == null) {
+                        TaskDTO errorResponse = new TaskDTO();
+                        errorResponse.setStatus("Failed to save draft (update in place)");
+                        return errorResponse;
+                    }
+
+                    runtimeService.setVariable(pid, "version", rectifDraftVersion);
+                    latestPpm = updatedPpm;
+
+                    log.info("RECTIF DRAFT: updated in place draft version={} for pid={}", rectifDraftVersion, pid);
+                }
+
+                // Traceability vars (optional, but nice to keep)
+                varsToSet.put("comment", request.getComment() != null ? request.getComment() : "");
+                varsToSet.put("dateComment", LocalDateTime.now());
+                varsToSet.put("treater", jwtAuth.getName());
+                if (Boolean.TRUE.equals(isPublishable)) {
+                    varsToSet.put("isPublishable", true);
+                }
+
+                // Persist vars (runtime)
+                runtimeService.setVariables(pid, varsToSet);
+
+                // Ensure PPM saved
+                ppmService.save(latestPpm);
+
+                try {
+                    Integer ppmIdDraft = (Integer) runtimeService.getVariable(pid, "id");
+                    Integer ppmVerDraft = (Integer) runtimeService.getVariable(pid, "version");
+                    updatePpmEtapeProcess(pid, ppmIdDraft, ppmVerDraft);
+                } catch (Exception e) {
+                    log.warn("RECTIF DRAFT: updatePpmEtapeProcess failed for pid={}: {}", pid, e.getMessage());
+                }
+
+                TaskDTO response = new TaskDTO();
+                response.setTaskId(task.getId());
+                response.setTaskName(task.getName());
+                response.setTaskDefinitionKey(task.getTaskDefinitionKey());
+                response.setProcessInstanceId(pid);
+                response.setId(id);
+                response.setVersion((Integer) runtimeService.getVariable(pid, "version"));
+                response.setNewStatus(latestPpm.getStatus());
+                response.setValidate(null);
+                response.setTraceability(varsToSet);
+                response.setIsUpdatable(isUpdatable);
+                response.setIsPublishable(isPublishable);
+                response.setMeetingRequired(meetingRequired);
+
+                try {
+                    Integer comIdSnapshot = (Integer) runtimeService.getVariable(pid, "comId");
+                    if (comIdSnapshot != null) {
+                        response.setComId(comIdSnapshot);
+                    }
+                } catch (Exception ignore) {
+                }
+
+                response.setStatus("Draft saved successfully");
+                return response;
             }
-            latestPpm = updatedPpm;
-            runtimeService.setVariable(task.getProcessInstanceId(), "version", latestPpm.getVersion());
-            log.info("Updated ppm after versioning, coms: {}", latestPpm.getComs());
+
+            // --- Normal path (validate != null): update PPM with versioning BEFORE completing ---
+            log.info("Inspecting request.getPpm() for task [{}]: {}", taskId, request.getPpm());
+
+            String pid = task.getProcessInstanceId();
+            Integer rectifDraftVersionForValidate = null;
+            try {
+                rectifDraftVersionForValidate = (Integer) runtimeService.getVariable(pid, "rectifDraftVersion");
+            } catch (Exception ignore) {
+            }
+
+            if (rectifDraftVersionForValidate != null) {
+                if (!(request.getPpm() instanceof PpmWithLotsRequestDto)) {
+                    TaskDTO errorResponse = new TaskDTO();
+                    errorResponse.setStatus(
+                            "Validation update requires PpmWithLotsRequestDto payload when rectifDraftVersion exists");
+                    return errorResponse;
+                }
+
+                log.info("RECTIF VALIDATE: update in place (id={},ver={}) instead of bumping again", id,
+                        rectifDraftVersionForValidate);
+                Ppm updatedPpm = ppmService.updateWithRelationships(id, rectifDraftVersionForValidate,
+                        (PpmWithLotsRequestDto) request.getPpm());
+
+                if (updatedPpm == null) {
+                    TaskDTO errorResponse = new TaskDTO();
+                    errorResponse.setStatus("Failed to update PPM object (rectif validate update in place)");
+                    return errorResponse;
+                }
+
+                latestPpm = updatedPpm;
+                runtimeService.setVariable(pid, "version", rectifDraftVersionForValidate);
+                log.info("Updated ppm after update-in-place, coms: {}", latestPpm.getComs());
+            } else {
+                Ppm updatedPpm = ppmService.updateWithVersioning(id, version, request.getPpm());
+                if (updatedPpm == null) {
+                    TaskDTO errorResponse = new TaskDTO();
+                    errorResponse.setStatus("Failed to update PPM object");
+                    return errorResponse;
+                }
+                latestPpm = updatedPpm;
+                runtimeService.setVariable(task.getProcessInstanceId(), "version", latestPpm.getVersion());
+                log.info("Updated ppm after versioning, coms: {}", latestPpm.getComs());
+            }
         }
+        // ==========================================================
 
         // --- Resolve next user task (best-effort for logging only) ---
         UserTask nextUserTask = null;
@@ -731,9 +891,9 @@ public class PpmFlowableService {
                                         }
                                     }
                                 }
+                                if (nextUserTask != null)
+                                    break;
                             }
-                            if (nextUserTask != null)
-                                break;
                         }
                     }
 
@@ -888,7 +1048,6 @@ public class PpmFlowableService {
                         log.info("CNCMP Decision: REJECT");
                         break;
 
-                    // this gonna manipulate the old version od deploed process (report)
                     case REJECT:
                         Integer acIdVarRej = (Integer) runtimeService.getVariable(pid, "acId");
                         if (acIdVarRej == null)
@@ -937,8 +1096,7 @@ public class PpmFlowableService {
             }
         }
 
-        // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId
-        // required ---
+        // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId required ---
         if (Boolean.TRUE.equals(commissionRequired) && !Boolean.TRUE.equals(meetingRequired)) {
             Integer reqComId = request.getComId();
             if (reqComId == null) {
@@ -963,18 +1121,15 @@ public class PpmFlowableService {
                 log.info("Affectation: Added comId {} to PPM", reqComId);
             }
 
-            // Set runtime for SCS so next task requires SCS membership
             runtimeService.setVariable(task.getProcessInstanceId(), "comId", reqComId);
-            runtimeService.setVariable(task.getProcessInstanceId(), "cncmpSpeComId", reqComId); // specialized SCS id
+            runtimeService.setVariable(task.getProcessInstanceId(), "cncmpSpeComId", reqComId);
             log.info("Affectation: Overwrote comId to {} for process {}", reqComId, task.getProcessInstanceId());
             skipComAssociationCheck = true;
 
-            // ---- Ensure PER + CPMP remain associated alongside SCS (idempotent) ----
             try {
                 String pid = task.getProcessInstanceId();
-                Integer perId = (Integer) runtimeService.getVariable(pid, "cncmpPerComId"); // PER from prior step (if
-                                                                                            // any)
-                Integer acIdV = (Integer) runtimeService.getVariable(pid, "acId"); // to resolve CPMP
+                Integer perId = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+                Integer acIdV = (Integer) runtimeService.getVariable(pid, "acId");
                 Integer cpmpId = (acIdV != null) ? acServiceImpl.getComIdByAcId(acIdV) : null;
 
                 if (!entityManager.contains(latestPpm))
@@ -999,24 +1154,22 @@ public class PpmFlowableService {
                             list.add(cc);
                     }
                 };
-                addIfMissing.accept(reqComId); // SCS
-                addIfMissing.accept(perId); // PER
-                addIfMissing.accept(cpmpId); // CPMP
+                addIfMissing.accept(reqComId);
+                addIfMissing.accept(perId);
+                addIfMissing.accept(cpmpId);
 
                 ppmService.save(latestPpm);
                 entityManager.flush();
-                log.info(
-                        "Affectation: ensured associations SCS={}, PER={}, CPMP={} are persisted for PPM(id={},ver={})",
+                log.info("Affectation: ensured associations SCS={}, PER={}, CPMP={} are persisted for PPM(id={},ver={})",
                         reqComId, perId, cpmpId, latestPpm.getId(), latestPpm.getVersion());
             } catch (Exception e) {
                 log.warn("Affectation: failed to persist SCS/PER/CPMP associations: {}", e.getMessage());
             }
-            // ------------------------------------------------------------------------
         }
 
         // --- Association checks with CURRENT step's comId (SCS after Affectation) ---
         Integer currComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
-        if ((!skipComAssociationCheck && currComId != null) && isPublishable == false) {
+        if ((!skipComAssociationCheck && currComId != null) && isPublishable == false && commissionRequired == true) {
             List<Integer> userComIds = currentUserService.getCurrentUserComIds();
             if (userComIds == null || !userComIds.contains(currComId)) {
                 throw new UserNotAssociatedWithComException(
@@ -1060,7 +1213,8 @@ public class PpmFlowableService {
                         currentComs.add(assocCom);
                         latestPpm.setComs(currentComs);
                         ppmService.save(latestPpm);
-                        log.info("Association: Added CURRENT step comId {} to PPM (id={}, ver={}) BEFORE status update",
+                        log.info(
+                                "Association: Added CURRENT step comId {} to PPM (id={}, ver={}) BEFORE status update",
                                 currComIdForPersist, latestPpm.getId(), latestPpm.getVersion());
                     }
                 }
@@ -1112,8 +1266,7 @@ public class PpmFlowableService {
             latestPpm = updatedPpm;
         }
 
-        // === SAFETY CASE #1 === (after status update, re-ensure CPMP/PER/SCS are
-        // associated)
+        // === SAFETY CASE #1 === (after status update, re-ensure CPMP/PER/SCS are associated)
         try {
             String pid = task.getProcessInstanceId();
 
@@ -1141,13 +1294,13 @@ public class PpmFlowableService {
                         if (cc != null)
                             list.add(cc);
                     } catch (Exception ignore) {
-                        /* defensive only */ }
+                    }
                 }
             };
 
-            addIfMissing.accept(cpmpId); // keep CPMP
-            addIfMissing.accept(perId); // keep PER
-            addIfMissing.accept(scsId); // keep SCS
+            addIfMissing.accept(cpmpId);
+            addIfMissing.accept(perId);
+            addIfMissing.accept(scsId);
 
             ppmService.save(latestPpm);
             entityManager.flush();
@@ -1205,9 +1358,6 @@ public class PpmFlowableService {
             varsToSet.put(processVariable, validateFlag);
         }
 
-        // Fallback: if we're in an AC-related task and the determined variable isn't
-        // 'valide',
-        // also set 'valide' just in case the gateway specifically expects it.
         if (candidateGroup.contains("AC") && validateFlag != null && !"valide".equals(processVariable)) {
             varsToSet.put("valide", validateFlag);
         }
@@ -1219,7 +1369,6 @@ public class PpmFlowableService {
             varsToSet.put("isPublishable", true);
         }
 
-        // Final sync of variables to runtime (for history/persistence)
         runtimeService.setVariables(task.getProcessInstanceId(), varsToSet);
 
         if (nextTaskIsLast && !Boolean.TRUE.equals(isPublishable)) {
@@ -1229,7 +1378,7 @@ public class PpmFlowableService {
                 CncmpDecision dec = request.getCncmpDecision();
                 if (dec == CncmpDecision.REJECT_END) {
                     targetStatus = ProcessStatus.REJETE;
-                } else if (dec == CncmpDecision.REPORT || dec == CncmpDecision.COND_APPROVE || dec == CncmpDecision.CI ) {
+                } else if (dec == CncmpDecision.REPORT || dec == CncmpDecision.COND_APPROVE || dec == CncmpDecision.CI) {
                     targetStatus = ProcessStatus.EN_TRAITEMENT;
                 }
             }
@@ -1282,28 +1431,23 @@ public class PpmFlowableService {
         }
 
         // ---------- SCS→PER (defer switch back) ----------
-        // Only schedule this when we are ON an SCS task (not Affectation):
-        // i.e. commissionRequired must be false, and current comId must equal SCS
-        // (speId).
         try {
             String pid = task.getProcessInstanceId();
             Integer perId = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
             Integer speId = (Integer) runtimeService.getVariable(pid, "cncmpSpeComId");
             Integer currentId = (Integer) runtimeService.getVariable(pid, "comId");
 
-            boolean onScsTask = !Boolean.TRUE.equals(commissionRequired) // NOT Affectation
+            boolean onScsTask = !Boolean.TRUE.equals(commissionRequired)
                     && perId != null && speId != null
                     && currentId != null && currentId.equals(speId);
 
             if (deferComIdAfterDecision == null && deferComIdAfterCompletion == null && onScsTask) {
-                // switch back to PER after finishing THIS SCS task
                 deferComIdAfterCompletion = perId;
                 log.info("SCS→PER: defer switch back to Permanent comId {} after completing SCS task", perId);
             }
         } catch (Exception e) {
             log.warn("SCS→PER: failed to plan switch back: {}", e.getMessage());
         }
-        // -----------------------------------------------
 
         // Apply deferred comId changes just before completion (and persist)
         Integer finalSwitch = (deferComIdAfterDecision != null) ? deferComIdAfterDecision : deferComIdAfterCompletion;
@@ -1364,21 +1508,31 @@ public class PpmFlowableService {
                                     cpmpId);
                         }
                     } catch (Exception ignore) {
-                        /* defensive only */ }
+                    }
                 }
             }
         } catch (Exception e) {
             log.warn("SAFETY#2: failed to ensure CPMP before completing task: {}", e.getMessage());
         }
+
         String processInstanceId = task.getProcessInstanceId();
         Integer ppmId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer ppmVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
+
         // Complete task
-        // Complete task with variables to ensure gateway evaluation has all needed
-        // identifiers
         taskService.complete(taskId, varsToSet);
 
         updatePpmEtapeProcess(processInstanceId, ppmId, ppmVer);
+
+        try {
+            runtimeService.removeVariable(processInstanceId, "rectifDraftVersion");
+        } catch (Exception ignore) {
+        }
+        try {
+            runtimeService.removeVariable(processInstanceId, "rectifDraftTaskId");
+        } catch (Exception ignore) {
+        }
+        // ---------------------------------------------------------------------------
 
         // --- Response ---
         TaskDTO response = new TaskDTO();
@@ -1400,6 +1554,7 @@ public class PpmFlowableService {
         response.setStatus("Task validated successfully");
         return response;
     }
+
 
     /* ======================= next steps helper ======================= */
 
@@ -1979,6 +2134,7 @@ public class PpmFlowableService {
                     try {
                         Optional<Ppm> ppmOpt = ppmService.findById(id, version);
 
+
                         ppmOpt.ifPresent(ppm -> {
 
                             taskInfo.setId(id);
@@ -1993,6 +2149,7 @@ public class PpmFlowableService {
                                 taskInfo.setNomAc(null);
                             }
                         });
+
 
                     } catch (Exception e) {
                         log.warn("Failed loading PPM for id {}, version {} in task {}: {}",
@@ -2015,9 +2172,19 @@ public class PpmFlowableService {
                 taskInfo.setCommissionRequired(props.get("commissionRequired"));
 
                 Boolean meetingRequired = props.get("meetingRequired");
-                if (meetingRequired != null && meetingRequired) {
-                    taskInfo.setMeetingRequired(true);
-                    taskList.add(taskInfo);
+                boolean exists = reunionPpmRepository.exists(
+                        ReunionPpmSpecifications.hasPpmId(taskInfo.getId())
+                                .and(ReunionPpmSpecifications.hasPpmVer(taskInfo.getVersion()))
+                                .and(
+                                        ReunionPpmSpecifications.reunionStatus(ReunionStatus.EN_COURS)
+                                                .or(ReunionPpmSpecifications.reunionStatus(ReunionStatus.VALIDER))
+                                                .or(ReunionPpmSpecifications.reunionStatus(ReunionStatus.PLANIFIER))
+                                )
+                );
+                if (meetingRequired != null && meetingRequired && !exists) {
+                        taskList.add(taskInfo);
+                        taskInfo.setMeetingRequired(true);
+
                 }
 
             }

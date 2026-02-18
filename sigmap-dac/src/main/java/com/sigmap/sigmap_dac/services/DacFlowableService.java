@@ -7,6 +7,7 @@ import com.sigmap.common.com.ComServiceImpl;
 import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.CncmpDecision;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacId;
 import com.sigmap.common.dac.DacRepository;
@@ -38,6 +39,8 @@ import com.sigmap.common.ppms.exception.MissingAcIdException;
 import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithComException;
+import com.sigmap.common.reunionDac.ReunionDacRepository;
+import com.sigmap.common.reunionDac.ReunionDacSpecifications;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.dac_dyna_form.DacDynaForm;
 import com.sigmap.common.dac_dyna_form.DacDynaFormRepository;
@@ -124,6 +127,8 @@ public class DacFlowableService {
     @Autowired private DacDocSoumissionRepository dacDocSoumissionRepository;
     @Autowired private DacDocSoumissionMapper dacDocSoumissionMapper;
     @Autowired private DynaFormFieldRepository dynaFormFieldRepository;
+    @Autowired
+    private ReunionDacRepository reunionDacRepository;
 
     /* -------------------------------- helpers: auth / roles -------------------------------- */
 
@@ -1914,7 +1919,18 @@ log.info("[DAC] DacDocsRequest: {}", updates);
                 dto.setMeetingRequired(props.get("meetingRequired"));
 
                 Boolean meetingRequired = props.get("meetingRequired");
-                if (meetingRequired != null && meetingRequired) {
+                boolean exists = reunionDacRepository.exists(
+                        ReunionDacSpecifications.hasDacId(dto.getId())
+                                .and(ReunionDacSpecifications.hasDacVer(dto.getVersion()))
+                                .and(
+                                        ReunionDacSpecifications.reunionStatus(ReunionStatus.EN_COURS)
+                                                .or(ReunionDacSpecifications.reunionStatus(ReunionStatus.VALIDER))
+                                                .or(ReunionDacSpecifications.reunionStatus(ReunionStatus.PLANIFIER))
+                                )
+                );
+
+
+                if (meetingRequired != null && meetingRequired && !exists) {
                     dto.setMeetingRequired(true);
                     taskList.add(dto);
                 }

@@ -3,7 +3,9 @@ package com.sigmap.common.ppms;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.response.AcAvailablePpmResponse;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
@@ -11,7 +13,12 @@ import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
+import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.reunion.exception.ReunionNotFound;
+import com.sigmap.common.reunion.response.ExtraitResponse;
+import com.sigmap.common.reunion.response.PvResponse;
+import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -39,7 +46,7 @@ import java.util.Optional;
  */
 public interface PpmService {
     List<Ppm> findAll();
-
+    List<Ppm> findAll(Specification<Ppm> spec);
     Integer findLatestVersionById(Integer ppmId);
     /**
      * Return a page of Ppms based on the given specification and pageable.
@@ -336,7 +343,8 @@ public interface PpmService {
     List<Ppm> findAllForSuperAdminAndAdminCentral(Specification<Ppm> spec);
     List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
      public List<Ppm> findAllPpms(Specification<Ppm> spec);
-
-
+     ExtraitResponse findAllExtraits(List<Integer> acIds, Integer ppmId, Integer ppmVersion) ;
+    PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion);
+    ReunionArgumentDocuments listDocPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion);
 }
 

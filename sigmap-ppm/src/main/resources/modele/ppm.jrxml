@@ -597,8 +597,8 @@ d’achèvement
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
-							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="68" height="75" uuid="4a0f533b-b9f7-4d06-a9fd-4e19834eca23"/>
+							<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="68" height="75" uuid="4a0f533b-b9f7-4d06-a9fd-4e19834eca23"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
