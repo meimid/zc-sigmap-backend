@@ -1657,5 +1657,10 @@ public class ReunionServiceImpl implements ReunionService{
         return result;
     }
 
+    @Override
+    public Optional<Reunion> findOneReunion(Specification<Reunion> specifications) {
+        return Optional.empty();
+    }
+
 
 }

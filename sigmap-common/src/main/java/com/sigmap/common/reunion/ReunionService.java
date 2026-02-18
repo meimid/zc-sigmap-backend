@@ -65,6 +65,6 @@ public interface ReunionService {
     Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunionId(Integer reunionId,Pageable pageable);
     Optional<String> findInterimParticipant(Integer reunionId);
 
-
+Optional<Reunion> findOneReunion(Specification<Reunion> specifications);
 
 }

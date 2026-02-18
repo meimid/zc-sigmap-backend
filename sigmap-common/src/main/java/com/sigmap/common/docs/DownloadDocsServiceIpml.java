@@ -132,7 +132,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
                 ProcessVerbalReunionSpecifications.docId(doc.getId())
         ).orElseThrow(() -> new DocsNotFoundException("PV not found for doc " + doc.getId()));
 
-        Reunion reunion = reunionService.findOne(
+        Reunion reunion = reunionService.findOneReunion(
                 Specification.where(ReunionSpecifications.deleted(false))
                         .and(ReunionSpecifications.status(ReunionStatus.CLOTURER).or(ReunionSpecifications.status(ReunionStatus.VALIDER)))
                         .and(ReunionSpecifications.pvId(pv.getId()))
