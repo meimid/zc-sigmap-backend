@@ -43,6 +43,7 @@ import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.model_dac.ModelDac;
 import com.sigmap.common.ppms.Ppm;
@@ -148,6 +149,7 @@ public class DacServiceImpl implements DacService {
     private final ComService comService;
     private final ReunionRepository reunionRepository;
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
+    private final CurrentUserService currentUserService;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -2288,7 +2290,13 @@ public class DacServiceImpl implements DacService {
 
     @Override
     public ReunionArgumentDocuments listDocDac(List<Integer> acIds, Integer dacId, Integer dacVersion) {
-
+        List<Integer> comIds=currentUserService.getCurrentUserComIds();
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
         ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
         if (acIds == null || acIds.isEmpty()) return dto;
         if (dacId == null || dacVersion == null) throw new DacNotFound(null);
@@ -2345,7 +2353,7 @@ public class DacServiceImpl implements DacService {
             if ("CPMP".equals(reunionComType)) {
                 dto.getDocumentCPMP().addAll(alfrescoIds);
             }
-            if ("CNCMP-S".equals(reunionComType)) {
+            if ("CNCMP-S".equals(reunionComType) && (userComTypes.contains("CNCMP-S") || userComTypes.contains("CNCMP-P"))) {
                 dto.getDocumentCNCMPSpecialise().addAll(alfrescoIds);
             }
             if ("CNCMP-P".equals(reunionComType)) {

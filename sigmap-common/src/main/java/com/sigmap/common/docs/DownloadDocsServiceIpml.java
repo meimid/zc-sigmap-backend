@@ -895,7 +895,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
                             case "CNCMP-S":
                                 if ("CNCMP-P".equals(reunionComType)) perm.add(alfId);
-                                if ("CNCMP-S".equals(reunionComType)) specSet.add(alfId);
+                                if ("CNCMP-S".equals(reunionComType)&&(userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) specSet.add(alfId);
                                 break;
 
                             default:

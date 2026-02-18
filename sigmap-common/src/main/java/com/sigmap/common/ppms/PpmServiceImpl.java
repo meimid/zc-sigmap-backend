@@ -555,8 +555,9 @@ public class PpmServiceImpl implements PpmService {
                     .filter(Objects::nonNull)
                     .map(ppmDoc ->ppmDoc.getPpmId().equals(ppmId)
                             &&ppmDoc.getPpmVer().equals(ppmVersion) &&
-                            ppmDoc.getDocs() != null ? ppmDoc.getDocs().getAlfresco_id() : null)
+                            ppmDoc.getDocs() != null &&!ppmDoc.getDocs().getIsDeleted()? ppmDoc.getDocs().getAlfresco_id() : null)
                     .filter(Objects::nonNull)
+
                     .collect(Collectors.toSet());
 
             if (pvAlfrescoIds.isEmpty()) {
@@ -569,7 +570,8 @@ public class PpmServiceImpl implements PpmService {
             if ("CPMP".equals(reunionComType)) {
                 dto.getDocumentCPMP().addAll(pvAlfrescoIds);
             }
-            if ("CNCMP-S".equals(reunionComType)&&(userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) {                dto.getDocumentCNCMPSpecialise().addAll(pvAlfrescoIds);
+            if ("CNCMP-S".equals(reunionComType)&&(userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) {
+                dto.getDocumentCNCMPSpecialise().addAll(pvAlfrescoIds);
             }
             if ("CNCMP-P".equals(reunionComType)) {
                 dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);
