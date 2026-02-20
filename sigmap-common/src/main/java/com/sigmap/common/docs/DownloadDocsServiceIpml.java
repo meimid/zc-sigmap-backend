@@ -739,7 +739,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
             throws IOException, DocsNotFoundException, PpmNotFound, AcNotFound {
 
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
-        List<Integer> comIds=currentUserService.getCurrentUserAcIds();
+        List<Integer> comIds=currentUserService.getCurrentUserComIds();
 
         Docs doc = docsService.findByAlfescoId(alfrescoId)
                 .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
