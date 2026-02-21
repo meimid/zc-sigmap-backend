@@ -215,7 +215,7 @@ public class DocController {
     }
 
     @PostMapping("/download/meeting-ppm-for-meeting")
-    public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocumentMeeting(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+    public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocumentMeeting(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
 
         byte[]  fileContent = downloadDocsService.downloadPpmArgumentDocumentForReunion(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
