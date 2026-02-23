@@ -1685,17 +1685,17 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         }
 
         resp.setDacDocs(dacDocs);
-        PvResponse listPvComByDac=dacService.listPvComByDac(dac.getComs().stream().map(Com::getId).toList(),dacId,dac.getDacVer());
+        PvResponse listPvComByDac=dacService.listPvComByDac(comIds,dacId,dac.getDacVer());
         ReunionArgumentDocuments listDocDac=dacService.listDocDac(acIds,dacId,dac.getDacVer());
         ExtraitResponse listExtrais= dacService.findAllExtraits (acIds, dacId, dac.getDacVer());
-        resp.getDacDocs().setPvCPMP(listPvComByDac.getPvCPMP());
-        resp.getDacDocs().setPvCNCMPPermanente(listPvComByDac.getPvCNCMPPermanente());
-        resp.getDacDocs().setPvCNCMPSpecialise(listPvComByDac.getPvCNCMPSpecialise());
+        resp.getDacDocs().setPvCPMP(listPvComByDac.getPvCPMP().stream().distinct().collect(Collectors.toList()));
+        resp.getDacDocs().setPvCNCMPPermanente(listPvComByDac.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
+        resp.getDacDocs().setPvCNCMPSpecialise(listPvComByDac.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
         resp.getDacDocs().setDocumentCPMP(listDocDac.getDocumentCPMP());
         resp.getDacDocs().setDocumentCNCMPSpecialise(listDocDac.getDocumentCNCMPSpecialise());
         resp.getDacDocs().setDocumentCNCMPPermanente(listDocDac.getDocumentCNCMPPermanente());
-        resp.getDacDocs().setExtraitCPMP(listExtrais.getExtraitCPMP());
-        resp.getDacDocs().setExtraitCNCMPP(listExtrais.getExtraitCNCMPP());
+        resp.getDacDocs().setExtraitCPMP(listExtrais.getExtraitCPMP().stream().distinct().collect(Collectors.toList()));
+        resp.getDacDocs().setExtraitCNCMPP(listExtrais.getExtraitCNCMPP().stream().distinct().collect(Collectors.toList()));
         if (dacDocs != null) {
             dacDocs.setAoId(dac.getAppelOffre().getId());
             dacDocs.setAoReference(dac.getAppelOffre().getReference());

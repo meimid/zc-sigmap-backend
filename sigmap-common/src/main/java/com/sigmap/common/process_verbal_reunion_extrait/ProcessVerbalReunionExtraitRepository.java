@@ -92,6 +92,7 @@ FROM ProcessVerbalReunionExtrait e
 WHERE e.doc IS NOT NULL
   AND e.ac.id IN :acIds
   AND e.isDeleted = false
+  
 
   AND EXISTS (
         SELECT 1
@@ -99,6 +100,7 @@ WHERE e.doc IS NOT NULL
         WHERE d.dacId = :dacId
           AND d.dacVer = :dacVer
           AND d.isDeleted = false
+          AND d.appelOffre.ppm.ac.id =e.acId
   )
 
   AND EXISTS (
