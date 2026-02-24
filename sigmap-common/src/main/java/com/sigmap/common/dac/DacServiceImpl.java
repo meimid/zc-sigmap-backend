@@ -42,7 +42,9 @@ import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.common.model_dac.ModelDac;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
@@ -141,6 +143,7 @@ public class DacServiceImpl implements DacService {
     private final com.sigmap.common.model_dac.ModelDacRepository modelDacRepository;
     private final ComService comService;
     private final ReunionRepository reunionRepository;
+    private final CurrentUserService currentUserService;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -1325,13 +1328,27 @@ public class DacServiceImpl implements DacService {
 
     @Override
     public Page<Dac> findAllLatestWithQuery(DacQuery query, Pageable pageable) {
-        // For now, only support appelOffreId filter
+        boolean isAdmin = Authentication.hasRole("ADMIN_CENTRAL") || Authentication.hasRole("SUPER_ADMIN");
+        if (isAdmin) {
         if (query.getAppelOffreId() != null) {
             return dacRepository.findLatestDacsByAppelOffre(query.getAppelOffreId(), pageable);
         }
-        
-        // If no appelOffreId, return all latest DACs
         return dacRepository.findLatestPerDac(pageable);
+    }
+
+        List<Integer> userAcs = currentUserService.getCurrentUserAcIds();
+        List<Integer> userComs = currentUserService.getCurrentUserComIds();
+
+        if ((userAcs == null || userAcs.isEmpty()) && (userComs == null || userComs.isEmpty())) {
+            return Page.empty(pageable);
+        }
+
+        if (query.getAppelOffreId() != null) {
+            return dacRepository.findLatestDacsByAppelOffreAndUser(query.getAppelOffreId(), userComs, userAcs,
+                    pageable);
+        }
+
+        return dacRepository.findLatestDacsForUser(userComs, userAcs, pageable);
     }
 
     @Override

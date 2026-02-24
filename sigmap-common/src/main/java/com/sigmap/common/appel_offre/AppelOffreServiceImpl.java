@@ -12,6 +12,7 @@ import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.StatusAppelOffre;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.PpmService;
@@ -56,9 +57,9 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     private final AcService acService;
     private final DacRepository dacRepository;
     private final PpmService ppmService;
+    private final CurrentUserService currentUserService;
     private static String lastYear = String.valueOf(Year.now().getValue());
     private static int counter = 0;
-
 
     @Override
     public AppelOffre save(AppelOffre appelOffre) {
@@ -73,8 +74,20 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     @Override
     public Page<AppelOffre> findAll(Specification<AppelOffre> spec, Pageable pageable) {
         log.debug("Fetching All AppelOffre ");
+        boolean isAdmin = Authentication.hasRole("ADMIN_CENTRAL") || Authentication.hasRole("SUPER_ADMIN");
+        if (isAdmin) {
         spec = spec.and(AppelOffreSpecifications.deleted(false));
         return appelOffreRepository.findAll(spec, pageable);
+    }
+
+        List<Integer> userAcs = currentUserService.getCurrentUserAcIds();
+        List<Integer> userComs = currentUserService.getCurrentUserComIds();
+
+        if ((userAcs == null || userAcs.isEmpty()) && (userComs == null || userComs.isEmpty())) {
+            return Page.empty(pageable);
+        }
+
+        return appelOffreRepository.findAllFilteredByUser(userAcs, userComs, pageable);
     }
 
     @Override
@@ -237,7 +250,6 @@ public class AppelOffreServiceImpl implements AppelOffreService {
         List<Ac> acList = userAcs.stream().map(UserAc::getAc).toList();
         return acList;
     }
-
 
     public static String generateReference(String currentYear) {
 
