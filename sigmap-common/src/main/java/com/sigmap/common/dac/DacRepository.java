@@ -83,6 +83,17 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
           "AND a.id IN :acIds")
   Page<Dac> findLatestPerDacByAcIds(@Param("acIds") List<Integer> acIds, Pageable pageable);
 
+    @Query("SELECT DISTINCT d FROM Dac d " +
+            "LEFT JOIN d.coms c " +
+            "LEFT JOIN d.appelOffre.ppm p " +
+            "LEFT JOIN p.ac a " +
+            "WHERE d.isDeleted = false " +
+            "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) " +
+            "AND (c.id IN :comIds OR a.id IN :acIds)")
+    Page<Dac> findLatestDacsForUser(@Param("comIds") List<Integer> comIds,
+            @Param("acIds") List<Integer> acIds,
+            Pageable pageable);
+
   /**
    * Find the maximum version for a given DAC ID.
    *
@@ -108,6 +119,19 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
          "AND d.isDeleted = false " +
          "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false)")
   Page<Dac> findLatestDacsByAppelOffre(@Param("appelOffreId") Integer appelOffreId, Pageable pageable);
+
+    @Query("SELECT DISTINCT d FROM Dac d " +
+            "LEFT JOIN d.coms c " +
+            "LEFT JOIN d.appelOffre.ppm p " +
+            "LEFT JOIN p.ac a " +
+            "WHERE d.appelOffre.id = :appelOffreId " +
+            "AND d.isDeleted = false " +
+            "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) " +
+            "AND (c.id IN :comIds OR a.id IN :acIds)")
+    Page<Dac> findLatestDacsByAppelOffreAndUser(@Param("appelOffreId") Integer appelOffreId,
+            @Param("comIds") List<Integer> comIds,
+            @Param("acIds") List<Integer> acIds,
+            Pageable pageable);
 
   /**
    * Find all published DACs for the website.
