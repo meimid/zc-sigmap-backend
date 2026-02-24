@@ -36,6 +36,10 @@ import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.mail.MailService;
+import com.sigmap.common.notification.NotificationService;
+import com.sigmap.common.notification.NotificationSource;
+import com.sigmap.common.notification.NotificationType;
+import com.sigmap.common.notification.dto.NotificationRequest;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
@@ -90,7 +94,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -113,12 +120,12 @@ public class ReunionServiceImpl implements ReunionService{
     private final ProcessVerbalReunionService processVerbalReunionService;
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
     private final ReunionSortResolver reunionSortResolver;
-    private final DocsService docsService;
+    private final NotificationService notificationService;
 
     public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
                               ParticipantService participantService, KeycloakAdminService keycloakAdminService,
                               PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
-                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, ReunionSortResolver reunionSortResolver, DocsService docsService) {
+                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, ReunionSortResolver reunionSortResolver, NotificationService notificationService) {
         this.repository = repository;
         this.comService = comService;
         this.userComRepository = userComRepository;
@@ -134,7 +141,7 @@ public class ReunionServiceImpl implements ReunionService{
         this.processVerbalReunionService = processVerbalReunionService;
         this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
         this.reunionSortResolver = reunionSortResolver;
-        this.docsService = docsService;
+        this.notificationService = notificationService;
     }
     @Override
     public Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable) {
@@ -930,7 +937,25 @@ public class ReunionServiceImpl implements ReunionService{
 
         // Fetch the Reunion entity by ID
         Reunion reunion = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        List<String> userIds=reunion.getParticipants().stream().map(Participant::getUserId).collect(Collectors.toList());
 
+        Calendar calendar = reunion.getReunionDate();
+
+        LocalDate localDate = calendar.toInstant()
+                .atZone(ZoneId.of("Africa/Nouakchott"))
+                .toLocalDate();
+
+        String formattedDate = localDate.format(
+                DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+        );
+        NotificationRequest notificationRequest = new NotificationRequest();
+        notificationRequest.setTitle("Invitation a la Reunion");
+        notificationRequest.setMessage("Nous vous informons que la réunion du comité « "
+                +reunion.getCom().getNom()+
+                " » se tiendra le "+formattedDate +" à "+reunion.getEmplacement()+".");
+        notificationRequest.setSource(NotificationSource.REUNION);
+        notificationRequest.setType(NotificationType.INFO);
+        notificationService.sendToMultipleUsers(userIds, notificationRequest);
         // Iterate over participants and send emails
         for (Participant participant : reunion.getParticipants()) {
 
@@ -1465,7 +1490,26 @@ public class ReunionServiceImpl implements ReunionService{
 
         // Fetch the Reunion entity by ID
         Reunion reunion = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        List<String> userIds=reunion.getParticipants().stream().map(Participant::getUserId).collect(Collectors.toList());
+        Calendar calendar = reunion.getReunionDate();
 
+        LocalDate localDate = calendar.toInstant()
+                .atZone(ZoneId.of("Africa/Nouakchott"))
+                .toLocalDate();
+
+        String formattedDate = localDate.format(
+                DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+        );
+        NotificationRequest notificationRequest = new NotificationRequest();
+        notificationRequest.setTitle("Avis d’annulation – Réunion du comité");
+        notificationRequest.setMessage(
+                "Nous vous informons que la réunion du comité « " + reunion.getCom().getNom() +
+                        " », initialement prévue le " + formattedDate + " à " + reunion.getEmplacement() +
+                        ", est annulée."
+        );
+        notificationRequest.setSource(NotificationSource.REUNION);
+        notificationRequest.setType(NotificationType.INFO);
+        notificationService.sendToMultipleUsers(userIds, notificationRequest);
         // Iterate over participants and send emails
         for (Participant participant : reunion.getParticipants()) {
 
