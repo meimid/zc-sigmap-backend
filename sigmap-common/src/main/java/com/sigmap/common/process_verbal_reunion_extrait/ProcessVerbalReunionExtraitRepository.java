@@ -86,17 +86,22 @@ ORDER BY e.extraitId
             @Param("ppmVer") Integer ppmVer
     );
 
-
     @Query("""
-SELECT DISTINCT e
+SELECT e
 FROM ProcessVerbalReunionExtrait e
-JOIN e.extraitsDac ed
 WHERE e.doc IS NOT NULL
   AND e.ac.id IN :acIds
   AND e.isDeleted = false
-  AND ed.dacId = :dacId
-  AND ed.dacVer = :dacVer
-  AND (ed.dac.isDeleted = false OR ed.dac.isDeleted IS NULL)
+  
+
+  AND EXISTS (
+        SELECT 1
+        FROM Dac d
+        WHERE d.dacId = :dacId
+          AND d.dacVer = :dacVer
+          AND d.isDeleted = false
+          AND d.appelOffre.ppm.ac.id =e.acId
+  )
 
   AND EXISTS (
         SELECT 1
@@ -113,6 +118,7 @@ ORDER BY e.extraitId
             @Param("dacId") Integer dacId,
             @Param("dacVer") Integer dacVer
     );
+
 
 
 }

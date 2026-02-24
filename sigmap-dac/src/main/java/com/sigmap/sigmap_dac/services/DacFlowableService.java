@@ -39,6 +39,11 @@ import com.sigmap.common.ppms.exception.MissingAcIdException;
 import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithComException;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
+import com.sigmap.common.reunion.response.ExtraitResponse;
+import com.sigmap.common.reunion.response.PvResponse;
+import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import com.sigmap.common.reunionDac.ReunionDacRepository;
 import com.sigmap.common.reunionDac.ReunionDacSpecifications;
 import com.sigmap.common.security.Authentication;
@@ -129,6 +134,8 @@ public class DacFlowableService {
     @Autowired private DynaFormFieldRepository dynaFormFieldRepository;
     @Autowired
     private ReunionDacRepository reunionDacRepository;
+    @Autowired
+    ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
 
     /* -------------------------------- helpers: auth / roles -------------------------------- */
 
@@ -1634,6 +1641,8 @@ log.info("[DAC] DacDocsRequest: {}", updates);
     @Transactional
     public TaskDetailsDTO getDacWithTasks(Integer dacId) throws DacNotFound, AcNotFound {
         var auth = SecurityContextHolder.getContext().getAuthentication();
+        List<Integer> comIds=currentUserService.getCurrentUserComIds();
+        List<Integer> acIds=currentUserService.getCurrentUserAcIds();
         if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
             var r = new TaskDetailsDTO();
             r.setStatus("Invalid or missing JWT authentication");
@@ -1649,6 +1658,7 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         }
 
         TaskDetailsDTO resp = new TaskDetailsDTO();
+
 
         // Attach full DAC docs/details snapshot for latest version
         DacResponseDTO dacDocs = dacService.findByDacIdAndVer(dac.getDacId(), dac.getDacVer());
@@ -1675,6 +1685,17 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         }
 
         resp.setDacDocs(dacDocs);
+        PvResponse listPvComByDac=dacService.listPvComByDac(comIds,dacId,dac.getDacVer());
+        ReunionArgumentDocuments listDocDac=dacService.listDocDac(acIds,dacId,dac.getDacVer());
+        ExtraitResponse listExtrais= dacService.findAllExtraits (acIds, dacId, dac.getDacVer());
+        resp.getDacDocs().setPvCPMP(listPvComByDac.getPvCPMP().stream().distinct().collect(Collectors.toList()));
+        resp.getDacDocs().setPvCNCMPPermanente(listPvComByDac.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
+        resp.getDacDocs().setPvCNCMPSpecialise(listPvComByDac.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
+        resp.getDacDocs().setDocumentCPMP(listDocDac.getDocumentCPMP());
+        resp.getDacDocs().setDocumentCNCMPSpecialise(listDocDac.getDocumentCNCMPSpecialise());
+        resp.getDacDocs().setDocumentCNCMPPermanente(listDocDac.getDocumentCNCMPPermanente());
+        resp.getDacDocs().setExtraitCPMP(listExtrais.getExtraitCPMP().stream().distinct().collect(Collectors.toList()));
+        resp.getDacDocs().setExtraitCNCMPP(listExtrais.getExtraitCNCMPP().stream().distinct().collect(Collectors.toList()));
         if (dacDocs != null) {
             dacDocs.setAoId(dac.getAppelOffre().getId());
             dacDocs.setAoReference(dac.getAppelOffre().getReference());
@@ -1765,6 +1786,7 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         resp.setCommissionRequired(props.get("commissionRequired"));
         resp.setNextSteps(getPossibleNextSteps(task));
         resp.setStatus("DAC and task details retrieved successfully");
+
         return resp;
     }
 

@@ -324,4 +324,13 @@ public class PpmSpecifications {
         };
     }
 
+    public static Specification<Ppm> hasIdVerAndAcIn(Integer id, Integer ver, List<Integer> acIds) {
+        return (root, query, cb) -> cb.and(
+                cb.equal(root.get("id"), id),
+                cb.equal(root.get("version"), ver),
+                root.get("ac").get("id").in(acIds)
+        );
+    }
+
+
 }

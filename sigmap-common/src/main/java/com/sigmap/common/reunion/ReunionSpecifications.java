@@ -207,7 +207,7 @@ public class ReunionSpecifications {
         return (root, query, cb) -> {
             query.distinct(true);
 
-            // Via ReunionPpm
+            // Via ReunionDac
             Join<Reunion, ReunionDac> reunionDacJoin =
                     root.join("reunionDacs", JoinType.LEFT);
             Predicate viaReunionDacs =
@@ -221,7 +221,7 @@ public class ReunionSpecifications {
         return (root, query, cb) -> {
             query.distinct(true);
 
-            // Via ReunionPpm
+            // Via ReunionDac
             Join<Reunion, ReunionDac> reunionDacJoin =
                     root.join("reunionDacs", JoinType.LEFT);
             Predicate viaReunionDacs =

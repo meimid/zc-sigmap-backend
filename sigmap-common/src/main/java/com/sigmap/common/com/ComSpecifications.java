@@ -2,6 +2,7 @@ package com.sigmap.common.com;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -185,4 +186,13 @@ public class ComSpecifications {
       return (root, query, criteriaBuilder)
               -> criteriaBuilder.equal(root.get("tutel").get("id"), acId);
   }
+
+  public static Specification<Com> hasDocId(Integer docId) {
+    return (root, query, cb) -> {
+      Join<Com, Docs> docsJoin = root.join("docs", JoinType.INNER);
+      return cb.equal(docsJoin.get("id"), docId);
+    };
+  }
+
+
 }
