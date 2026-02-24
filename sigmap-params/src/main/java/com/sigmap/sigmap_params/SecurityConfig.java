@@ -50,6 +50,7 @@ public class SecurityConfig {
                         request ->
                                 request
                                         .requestMatchers(
+                                                "/ws/**",
                                                 "/actuator/**",
                                                 "/token/**",
                                                 "/test",
