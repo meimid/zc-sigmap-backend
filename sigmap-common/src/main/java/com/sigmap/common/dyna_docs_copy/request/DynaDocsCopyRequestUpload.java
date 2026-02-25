@@ -23,6 +23,7 @@ public class DynaDocsCopyRequestUpload {
     private Integer dacVer;
     private Integer dynaDocsId;
     private Integer dynaDocsVer;
+    private Boolean isStatic;
     private MultipartFile file;
 
 }

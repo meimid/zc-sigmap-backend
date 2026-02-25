@@ -150,6 +150,7 @@ public class DynaDocsCopyServiceImpl implements DynaDocsCopyService {
         entity.setTemplateFileName(storedFileName);
         entity.setStatus(ActiveStatus.ACTIF);
         entity.setDac(dac);
+        entity.setIsStatic(request.getIsStatic());
         entity.setDynaDocs(dynaDocs);
 
         dynaDocsCopyRepository.save(entity);
@@ -165,76 +166,6 @@ public class DynaDocsCopyServiceImpl implements DynaDocsCopyService {
         }
         return resolved;
     }
-
-
-
-    /*public void uploadTemplate(MultipartFile file) {
-
-        log.info("Uploading template file: {}", file.getOriginalFilename());
-
-        if (exists(file.getOriginalFilename())) {
-            log.error("Template already exists: {}", file.getOriginalFilename());
-            throw new RuntimeException("Template already exists: " + file.getOriginalFilename());
-        }
-
-        try {
-            Path templatePath = Paths.get(inputModifiedDocPath, file.getOriginalFilename());
-
-            OutputStream outputStream = Files.newOutputStream(templatePath, StandardOpenOption.CREATE);
-
-            IOUtils.copy(file.getInputStream(), outputStream);
-
-            // Files.copy(file.toPath(), templatePath);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }*/
-
-    /*public boolean exists(String templateName) {
-        try {
-            Path templatePath = Paths.get(inputModifiedDocPath, templateName);
-            return Files.exists(templatePath, LinkOption.NOFOLLOW_LINKS);
-        } catch (Exception e) {
-            log.error("Error checking if template exists: {}", e.getMessage());
-            return false;
-        }
-    }*/
-
-
-    /*    public void cloneDynaDocsIntoDynaDocsCopie(Dac savedDac, List<DynaDocs> docs) {
-
-        for (DynaDocs dd : docs) {
-            // Physical file copy from inputDocPath to inputModifiedDocPath
-            String templateName = dd.getTemplateFileName();
-            if (templateName != null && !templateName.isEmpty()) {
-                try {
-                    Path source = Paths.get(basePath, templateName);
-                    Path destination = Paths.get(inputModifiedDocPath, templateName);
-                    if (Files.exists(source)) {
-                        Files.createDirectories(destination.getParent());
-                        Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
-                        log.info("Cloned template file: {}", templateName);
-                    }
-                } catch (IOException e) {
-                    log.error("Failed to copy template file during cloning: {}", templateName, e);
-                }
-            }
-
-
-            DynaDocsCopy copy = new DynaDocsCopy();
-            copy.setVersion(1);
-            copy.setName(dd.getName());
-            copy.setTemplateFileName(dd.getTemplateFileName());
-            copy.setStatus(dd.getStatus());
-            copy.setIsAAO(dd.getIsAAO());
-            copy.setOrdre(dd.getDynaDocOrder());
-            copy.setDac(savedDac);
-            copy.setDynaDocs(dd);
-
-            dynaDocsCopyRepository.save(copy);
-            //dynaDocsCopyServiceImpl.uploadTemplate();
-        }
-    }*/
 
 
     public void cloneDynaDocsIntoDynaDocsCopie(Dac savedDac, List<DynaDocs> docs) {
@@ -291,6 +222,7 @@ public class DynaDocsCopyServiceImpl implements DynaDocsCopyService {
             copy.setIsAAO(dd.getIsAAO());
             copy.setOrdre(dd.getDynaDocOrder());
             copy.setDac(savedDac);
+            copy.setIsStatic(dd.getIsStatic());
             copy.setDynaDocs(dd);
 
             dynaDocsCopyRepository.save(copy);

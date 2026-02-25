@@ -22,24 +22,14 @@ public class DynaDocsCopyController {
 
     private final DynaDocsCopyService dynaDocsCopyService;
 
-
     @GetMapping("/active-last-version")
-    public ResponseEntity<List<DynaDocsCopy>> getActiveLastVersion(
-            @RequestParam Integer dacId,
-            @RequestParam Integer dacVer
-    ) {
-        return ResponseEntity.ok(
-                dynaDocsCopyService.findActiveLastVersion(dacId, dacVer)
+    public ResponseEntity<List<DynaDocsCopy>> getActiveLastVersion( @RequestParam Integer dacId, @RequestParam Integer dacVer ) {
+        return ResponseEntity.ok(dynaDocsCopyService.findActiveLastVersion(dacId, dacVer)
         );
     }
 
-    @PostMapping(
-            value = "/upload-modified",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
-    public ResponseEntity<String> uploadModifiedFile(
-            @ModelAttribute DynaDocsCopyRequestUpload request
-    ) {
+    @PostMapping(value = "/upload-modified", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> uploadModifiedFile( @ModelAttribute DynaDocsCopyRequestUpload request ) {
         dynaDocsCopyService.uploadModifiedFiles(request);
         return ResponseEntity.ok("File updated successfully");
     }
