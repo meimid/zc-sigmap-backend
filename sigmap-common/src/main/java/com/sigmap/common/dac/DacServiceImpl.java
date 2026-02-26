@@ -2444,6 +2444,9 @@ public class DacServiceImpl implements DacService {
                             if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
                                 dto.getPvCNCMPPermanente().add(pvAlfrescoId);
                             }
+                            if ("CNCMP-S".equals(reunionComType)) {
+                                dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                            }
                             if ("CPMP".equals(reunionComType)&&pvCpmp.add(pvAlfrescoId)) {
                                 dto.getPvCPMP().add(pvAlfrescoId);
                             }

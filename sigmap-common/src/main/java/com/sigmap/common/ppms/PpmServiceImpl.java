@@ -478,6 +478,9 @@ public class PpmServiceImpl implements PpmService {
                         if ("CNCMP-P".equals(reunionComType)) {
                             dto.getPvCNCMPPermanente().add(pvAlfrescoId);
                         }
+                        if ("CNCMP-S".equals(reunionComType)) {
+                            dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                        }
                         if ("CPMP".equals(reunionComType)) {
                             dto.getPvCPMP().add(pvAlfrescoId);
                         }
