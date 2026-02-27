@@ -341,7 +341,7 @@ public class PpmServiceImpl implements PpmService {
 
         // Step 10: PV + Extrait rules (INSERTED HERE)
         populateVisiblePvs(ppm, userAcIds, userComIds);
-        populateReunionArgumentsDoc(ppm, userAcIds);
+        populateReunionArgumentsDoc(ppm);
 
         Ppm responsePpm = createFilteredResponsePpm(ppm);
 
@@ -382,13 +382,13 @@ public class PpmServiceImpl implements PpmService {
 
 
     }
-    private void populateReunionArgumentsDoc(Ppm ppm,  List<Integer> acIds) throws PpmNotFound, AcNotFound {
+    private void populateReunionArgumentsDoc(Ppm ppm ) throws PpmNotFound, AcNotFound {
 
 
 
-        if (acIds != null && !acIds.isEmpty()) {
 
-            ReunionArgumentDocuments reunionArgumentDocuments=listDocPpm(acIds, ppm.getId(), ppm.getVersion());
+
+            ReunionArgumentDocuments reunionArgumentDocuments=listDocPpm(ppm.getComs().stream().map(Com::getId).collect(Collectors.toList()), ppm.getId(), ppm.getVersion());
 
             log.warn("Ppm doc CPMP ={}" ,reunionArgumentDocuments.getDocumentCPMP());
             log.warn("Ppm docs Permanente ={}",reunionArgumentDocuments.getDocumentCNCMPPermanente());
@@ -397,7 +397,7 @@ public class PpmServiceImpl implements PpmService {
             ppm.setDocumentCPMP(reunionArgumentDocuments.getDocumentCPMP());
             ppm.setDocumentCNCMPPermanente(reunionArgumentDocuments.getDocumentCNCMPPermanente());
             ppm.setDocumentCNCMPSpecialisee(reunionArgumentDocuments.getDocumentCNCMPSpecialise());
-        }
+
 
 
     }
@@ -509,10 +509,13 @@ public class PpmServiceImpl implements PpmService {
         return dto;
     }
     @Override
-    public ReunionArgumentDocuments listDocPpm(List<Integer> acIds, Integer ppmId, Integer ppmVersion) throws PpmNotFound, AcNotFound {
+    public ReunionArgumentDocuments listDocPpm(List<Integer> ppmComIds, Integer ppmId, Integer ppmVersion) throws PpmNotFound, AcNotFound {
 
         ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
         List<Integer> comIds=currentUserService.getCurrentUserComIds();
+        if(ppmComIds.stream().noneMatch(comIds::contains)){
+            return dto;
+        }
         Set<String> userComTypes = comService.findAll(
                         Specification.where(ComSpecifications.deleted(false))
                                 .and(ComSpecifications.idIn(comIds))
@@ -520,13 +523,6 @@ public class PpmServiceImpl implements PpmService {
                 .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
                 .collect(Collectors.toSet());
 
-        if (acIds == null || acIds.isEmpty()) return dto;
-        if (ppmId == null || ppmVersion == null) throw new PpmIdNotFound("", null);
-
-        boolean allowed = ppmRepository.exists(
-                PpmSpecifications.hasIdVerAndAcIn(ppmId, ppmVersion, acIds)
-        );
-        if (!allowed) return dto;
 
         // 2) Load reunions once
         Specification<Reunion> spec = Specification
