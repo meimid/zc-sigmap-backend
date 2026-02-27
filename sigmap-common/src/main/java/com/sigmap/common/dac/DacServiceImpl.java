@@ -2304,22 +2304,21 @@ public class DacServiceImpl implements DacService {
 
 
     @Override
-    public ReunionArgumentDocuments listDocDac(List<Integer> acIds, Integer dacId, Integer dacVersion) {
+    public ReunionArgumentDocuments listDocDac(List<Integer> dacComIds, Integer dacId, Integer dacVersion) {
+        ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
+
         List<Integer> comIds=currentUserService.getCurrentUserComIds();
+        if(dacComIds.stream().noneMatch(comIds::contains)){
+            return dto;
+        }
         Set<String> userComTypes = comService.findAll(
                         Specification.where(ComSpecifications.deleted(false))
                                 .and(ComSpecifications.idIn(comIds))
                 ).stream()
                 .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
                 .collect(Collectors.toSet());
-        ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
-        if (acIds == null || acIds.isEmpty()) return dto;
         if (dacId == null || dacVersion == null) throw new DacNotFound(null);
 
-        boolean allowed = dacRepository.exists(
-                DacSpecifications.hasIdVerAndAcIn(dacId, dacVersion, acIds)
-        );
-        if (!allowed) return dto;
         // 2) Load reunions once
         Specification<Reunion> spec = Specification
                 .where(ReunionSpecifications.deleted(false))

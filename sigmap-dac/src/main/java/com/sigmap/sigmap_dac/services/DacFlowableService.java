@@ -1686,7 +1686,7 @@ log.info("[DAC] DacDocsRequest: {}", updates);
 
         resp.setDacDocs(dacDocs);
         PvResponse listPvComByDac=dacService.listPvComByDac(comIds,dacId,dac.getDacVer());
-        ReunionArgumentDocuments listDocDac=dacService.listDocDac(acIds,dacId,dac.getDacVer());
+        ReunionArgumentDocuments listDocDac=dacService.listDocDac(dac.getComs().stream().map(Com::getId).collect(Collectors.toList()),dacId,dac.getDacVer());
         ExtraitResponse listExtrais= dacService.findAllExtraits (acIds, dacId, dac.getDacVer());
         resp.getDacDocs().setPvCPMP(listPvComByDac.getPvCPMP().stream().distinct().collect(Collectors.toList()));
         resp.getDacDocs().setPvCNCMPPermanente(listPvComByDac.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
