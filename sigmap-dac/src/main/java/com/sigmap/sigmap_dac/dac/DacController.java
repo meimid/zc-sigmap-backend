@@ -66,7 +66,7 @@ public class DacController {
   public ResponseEntity<Page<DacResponce>> findAll(DacQuery query, Pageable pageable) {
     log.debug("API for get All dac .... ");
     // Return only latest version per DAC id
-    Page<Dac> dac = dacService.findAllLatest(pageable);
+    Page<Dac> dac = dacService.findAllLatestWithQuery(query, pageable);
     Page<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
     return ResponseEntity.ok(dacResponse);
   }

@@ -345,6 +345,6 @@ public interface PpmService {
      public List<Ppm> findAllPpms(Specification<Ppm> spec);
      ExtraitResponse findAllExtraits(List<Integer> acIds, Integer ppmId, Integer ppmVersion) ;
     PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion);
-    ReunionArgumentDocuments listDocPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion);
+    ReunionArgumentDocuments listDocPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) throws PpmNotFound, AcNotFound;
 }
 

@@ -69,25 +69,33 @@ public class DocsServiceImpl implements DocsService {
     }
 
     @Override
-    public Optional <DocumentResponseDTO> getDocumentInformation(String alfrescoId) {
-        return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
+    public DocumentResponseDTO getDocumentInformation(String alfrescoId) {
+        return alfrescoService.getDocumentById(alfrescoId);
     }
+
     @Override
     public byte[] downloadDocument(String alfrescoId) throws IOException {
 
         if (alfrescoId == null || alfrescoId.isBlank()) {
             throw new IOException("Alfresco ID cannot be null or empty.");
         }
-        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(alfrescoId));
-        if (dummyContent.getFile()!=null) {
+
+        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId);
+
+        if (dummyContent == null) {
+            throw new DocsNotFoundException(alfrescoId);
+        }
+
+        if (dummyContent.isErreur()) {
+            throw new IOException("Alfresco error: " + dummyContent.getMsg());
+        }
+
+        if (dummyContent.getFile() != null && dummyContent.getFile().length > 0) {
             return dummyContent.getFile();
         }
-        else {
-            throw new IOException("Error while downloading document.");
-        }
 
+        throw new IOException("File is null or empty from Alfresco.");
     }
-
 
 
 
