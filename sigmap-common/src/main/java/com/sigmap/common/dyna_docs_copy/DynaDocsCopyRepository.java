@@ -52,7 +52,8 @@ public interface DynaDocsCopyRepository extends JpaRepository<DynaDocsCopy, Inte
             )
             AND ddc.dac.dacId = :dacId
             AND ddc.dac.dacVer = :dacVer
-                  ORDER BY ddc.ordre ASC
+            AND ddc.isStatic = false
+            ORDER BY ddc.ordre ASC
       """)
   List<DynaDocsCopy> findActiveLastVersionByDac(
       @Param("dacId") Integer dacId,

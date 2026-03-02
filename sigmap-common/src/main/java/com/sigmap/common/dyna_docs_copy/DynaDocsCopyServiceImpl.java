@@ -52,7 +52,7 @@ public class DynaDocsCopyServiceImpl implements DynaDocsCopyService {
     @Override
     public List<DynaDocsCopy> findActiveLastVersion(Integer dacId, Integer dacVer) {
         List<DynaDocsCopy> dynaDocsCopies= dynaDocsCopyRepository.findActiveLastVersionByDac(dacId, dacVer);
-        log.info("dynaDocsCopies: --------------------- {}", dynaDocsCopies.size());
+        log.debug("dynaDocsCopies: --------------------- {}", dynaDocsCopies.size());
         return dynaDocsCopies;
     }
 
@@ -190,7 +190,7 @@ public class DynaDocsCopyServiceImpl implements DynaDocsCopyService {
                 // Prevent path traversal if templateName comes from DB/user
                 String safeName = templateName.replace("\\", "/");
                 if (safeName.contains("..") || safeName.startsWith("/")) {
-                    log.error("رفض اسم ملف غير آمن: {}", templateName);
+                    log.error("nom de fichier non sécurisé: {}", templateName);
                 } else {
                     Path source = baseDir.resolve(safeName).normalize();
                     Path destination = modifiedDir.resolve(safeName).normalize();
