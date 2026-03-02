@@ -14,7 +14,9 @@ import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.reunion.response.ExtraitResponse;
 import com.sigmap.common.reunion.response.PvResponse;
+import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -84,5 +86,8 @@ public interface DacService {
     DacWithAoReferenceResponse getDacWithAoReference(Integer dacId, Integer dacVer) 
             throws DacNotFound;
 
-    PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion);
+     ReunionArgumentDocuments listDocDac(List<Integer> comIds, Integer dacId, Integer dacVersion) ;
+     PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion);
+    ExtraitResponse findAllExtraits(List<Integer> acIds, Integer dacId, Integer DacVersion) ;
+
 }

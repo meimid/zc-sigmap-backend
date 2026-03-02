@@ -1501,6 +1501,7 @@ public class DacDocsServiceImpl implements DacDocsService{
                 dto.setDynaDocId(dacDoc.getId().getDynaDocsId());
                 dto.setDynaDocVersion(dacDoc.getId().getDynaDocsVer());
                 dto.setDynaFieldId(dacDoc.getId().getDynaFieldsId());
+
                 return dto;
             }).collect(Collectors.toList());
             response.setDacDocDetails(detailsDTOs);

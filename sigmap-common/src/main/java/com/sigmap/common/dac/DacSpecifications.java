@@ -148,4 +148,13 @@ public class DacSpecifications {
             return criteriaBuilder.equal(root.get("appelOffre").get("id"), appelOffreId);
         };
     }
+
+    public static Specification<Dac> hasIdVerAndAcIn(Integer id, Integer ver, List<Integer> acIds) {
+        return (root, query, cb) -> cb.and(
+                cb.equal(root.get("dacId"), id),
+                cb.equal(root.get("dacVer"), ver),
+                root.get("appelOffre").get("ppm").get("ac").get("id").in(acIds)
+        );
+    }
+
 }

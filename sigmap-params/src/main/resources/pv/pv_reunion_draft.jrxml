@@ -493,19 +493,19 @@ $F{code}.equals("CNCMP-P") ?
 	</pageFooter>
 	<summary>
 		<band height="144" splitType="Stretch">
-			<staticText>
-				<reportElement style="ArialBold" x="206" y="0" width="194" height="23" uuid="478c225d-c310-4131-b3ac-02e418c191db"/>
+			<textField>
+				<reportElement style="ArialBold" x="190" y="0" width="230" height="23" uuid="0f1168da-ae6c-4982-844f-3fcb9d9558da"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" isBold="true" isUnderline="true"/>
 				</textElement>
-				<text><![CDATA[PRESIDENT]]></text>
-			</staticText>
+				<textFieldExpression><![CDATA["PRESIDENT"+ ($P{interim} != null ? " PAR INTERIM" : " " )]]></textFieldExpression>
+			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement style="ArialBold" x="213" y="21" width="184" height="23" uuid="3c187fe6-a60c-44a0-8c02-552e3bcfe353"/>
+				<reportElement style="ArialBold" x="198" y="21" width="212" height="23" uuid="3c187fe6-a60c-44a0-8c02-552e3bcfe353"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" isBold="true" isUnderline="false"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$P{president}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{interim} != null ? $P{interim} : $P{president}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement style="ArialBold" x="4" y="81" width="194" height="17" uuid="7defe35b-4884-491c-9580-cf27f4276961"/>
