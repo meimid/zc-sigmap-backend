@@ -28,6 +28,9 @@ import com.sigmap.common.dac_prix.response.DacPrixResponce;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
+import com.sigmap.common.dyna_docs_copy.DynaDocsCopy;
+import com.sigmap.common.dyna_docs_copy.DynaDocsCopyRepository;
+import com.sigmap.common.dyna_docs_copy.DynaDocsCopyServiceImpl;
 import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.dyna_docs_model.DynaDocsModelRepository;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
@@ -69,6 +72,7 @@ import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.SocieteDacID;
 import com.sigmap.common.societe_dac.SocieteDacRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
+import jakarta.persistence.criteria.Path;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.io.RandomAccessRead;
 import org.apache.pdfbox.io.RandomAccessReadBuffer;
@@ -86,6 +90,8 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Year;
@@ -149,15 +155,17 @@ public class DacServiceImpl implements DacService {
     private final com.sigmap.common.model_dac.ModelDacRepository modelDacRepository;
     private final ComService comService;
     private final ReunionRepository reunionRepository;
+    private final DynaDocsCopyRepository dynaDocsCopyRepository;
+    private final DynaDocsCopyServiceImpl dynaDocsCopyServiceImpl;
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
     private final CurrentUserService currentUserService;
 
     @Override
-    public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
-        log.debug("Processing Dac ID: {}, Version: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, basePath, customDirPath);
+    public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String inputModifiedDocPath, String customDirPath) {
+        log.debug("Processing Dac ID: {}, Version: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, inputModifiedDocPath, customDirPath);
 
         // Step 1: Validate parameters
-        validateParams(dacId, dacVersion, basePath, customDirPath);
+        validateParams(dacId, dacVersion, inputModifiedDocPath, customDirPath);
 
         // Step 1: Retrieve Dac by ID and version
         DacId dacIdObj = new DacId(dacId, dacVersion);
@@ -178,24 +186,24 @@ public class DacServiceImpl implements DacService {
             log.warn("No dac_docs data found for Dac ID: {}, Version: {}", dacId, dacVersion);
             throw new RuntimeException("No dac_docs data found for Dac ID: " + dacId + ", Version: " + dacVersion);
         }
-
+        // find DynaDocsCopy last version activ to prevesualise
+        List<DynaDocsCopy> dynaDocCopy = dynaDocsCopyRepository.findActiveLastVersionByDac(dacId, dacVersion);
+        if (dynaDocCopy.isEmpty()) {
+            log.warn("No dyna_docs_copy data found for Dac ID: {}, Version: {}", dacId, dacVersion);
+            throw new RuntimeException("No dyna_docs_copy data found for Dac ID: " + dacId + ", Version: " + dacVersion);
+        }
         // Group by (dynaDocsId, dynaDocsVer) and compute the order using the related DynaDocs.dynaDocOrder
         Map<String, Integer> docKeyToOrder = new HashMap<>();
         LinkedHashMap<String, int[]> docKeyPairs = new LinkedHashMap<>();
-        for (DacDocs doc : dacDocsSnapshot) {
-            Integer ddId = doc.getId().getDynaDocsId();
-            Integer ddVer = doc.getId().getDynaDocsVer();
-            String key = ddId + ":" + ddVer;
+        for (DynaDocsCopy ddc : dynaDocCopy) {
+            Integer ddcId = ddc.getDynaDocs().getId();
+            Integer ddcVer = ddc.getDynaDocs().getVersion();
+            String key = ddcId + ":" + ddcVer;
             if (!docKeyPairs.containsKey(key)) {
-                docKeyPairs.put(key, new int[]{ddId, ddVer});
+                docKeyPairs.put(key, new int[]{ddcId, ddcVer});
                 // Use the relation via field -> dynaDocs to get order when available
                 Integer order = null;
-               /* try {
-                    if (doc.getDynaField() != null && doc.getDynaField().getDynaDocs() != null) {
-                        order = doc.getDynaField().getDynaDocs().getDynaDocOrder();
-                    }
-                } catch (Exception ignore) {
-                }*/
+
                 // Fallback to a large number to avoid NPEs; ordering will still be stable
                 docKeyToOrder.put(key, order != null ? order : Integer.MAX_VALUE);
             }
@@ -209,14 +217,23 @@ public class DacServiceImpl implements DacService {
                 .sorted(Comparator.comparing(dd -> docKeyToOrder.get(dd.getId() + ":" + dd.getVersion())))
                 .toList();
 
+        // Load the exact DynaDocsCopy versions and sort by their intended order
+        List<DynaDocsCopy> dynaDocsCopyList = docKeyPairs.values().stream()
+                .map(pair -> dynaDocsCopyRepository
+                        .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1], dacId, dacVersion)
+                        .orElseThrow(() -> new IllegalArgumentException("DynaDocs not found for ID: " + pair[0] + ", Version: " + pair[1])))
+                .sorted(Comparator.comparing(dd -> docKeyToOrder.get(dd.getDynaDocs().getId() + ":" + dd.getDynaDocs().getVersion())))
+                .toList();
+
         List<String> generatedFilePaths = new ArrayList<>();
 
         int docOreder = 0;
         // Step 3: Process each snapshot document in order
-        for (DynaDocs dynaDoc : dynaDocsList) {
+        for (DynaDocsCopy dynaDoc : dynaDocsCopyList) {
             docOreder = docOreder + 1;
             // If static doc: fetch linked Docs and integrate as-is (pdf/image)
-            if (Boolean.TRUE.equals(dynaDoc.getIsStatic())) {
+
+            if (Boolean.TRUE.equals(dynaDoc.getIsStatic()))  {
                 try {
                     Optional<DacDocs> linked = dacDocsSnapshot.stream()
                             .filter(dd -> Objects.equals(dd.getId().getDynaDocsId(), dynaDoc.getId())
@@ -246,7 +263,7 @@ public class DacServiceImpl implements DacService {
             String templateFileName = dynaDoc.getTemplateFileName();
             log.debug("Processing DynaDocs ID: {}, Version: {}, Template: {}", dynaDoc.getId(), dynaDoc.getVersion(), templateFileName);
 
-            File templateFile = new File(basePath, templateFileName);
+            File templateFile = new File(inputModifiedDocPath, templateFileName);
             if (!templateFile.exists()) {
                 log.error("Template file not found: {}", templateFile.getAbsolutePath());
                 continue;
@@ -282,9 +299,9 @@ public class DacServiceImpl implements DacService {
     }
 
     @Override
-    public String generateDocumentWithBookmarks(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer, String basePath, String customDirPath) {
-        log.debug("Processing Dac ID: {}, Version: {}, DynaDocsId: {}, DynaDocsVer: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, dynaDocsId, dynaDocsVer, basePath, customDirPath);
-        validateParams(dacId, dacVersion, basePath, customDirPath);
+    public String generateDocumentWithBookmarks(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer, String inputModifiedDocPath, String customDirPath) {
+        log.debug("Processing Dac ID: {}, Version: {}, DynaDocsId: {}, DynaDocsVer: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, dynaDocsId, dynaDocsVer, inputModifiedDocPath, customDirPath);
+        validateParams(dacId, dacVersion, inputModifiedDocPath, customDirPath);
         DacId dacIdObj = new DacId(dacId, dacVersion);
         Dac dac = dacRepository.findById(dacIdObj)
                 .orElseThrow(() -> new IllegalArgumentException("Dac not found for ID: " + dacId + ", Version: " + dacVersion));
@@ -292,15 +309,19 @@ public class DacServiceImpl implements DacService {
             log.error("Dac must have a Ppm");
             throw new IllegalArgumentException("Dac must have a Ppm");
         }
-        DynaDocs dynaDoc = dynaDocsRepository.findByIdDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer)
+       /* DynaDocs dynaDoc = dynaDocsRepository.findByIdDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer)
                 .orElseThrow(() -> new IllegalArgumentException("DynaDocs not found for ID: " + dynaDocsId + ", Version: " + dynaDocsVer));
+*/
+        // find DynaDocsCopy last version activ to prevesualise
+        DynaDocsCopy dynaDocCopy = dynaDocsCopyRepository.findByIdDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer,dacId,dacVersion)
+                .orElseThrow(() -> new IllegalArgumentException("DynaDocsCopy not found for ID: " + dacId + ", Version: " + dacVersion));
 
         // Handle static doc directly
-        if (Boolean.TRUE.equals(dynaDoc.getIsStatic())) {
+        if (Boolean.TRUE.equals(dynaDocCopy.getIsStatic())) {
             List<DacDocs> dacDocsSnapshot = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
             Optional<DacDocs> linked = dacDocsSnapshot.stream()
-                    .filter(dd -> Objects.equals(dd.getId().getDynaDocsId(), dynaDoc.getId())
-                            && Objects.equals(dd.getId().getDynaDocsVer(), dynaDoc.getVersion())
+                    .filter(dd -> Objects.equals(dd.getId().getDynaDocsId(), dynaDocCopy.getDynaDocs().getId())
+                            && Objects.equals(dd.getId().getDynaDocsVer(), dynaDocCopy.getDynaDocs().getVersion())
                             && dd.getDocs() != null)
                     .findFirst();
             if (linked.isPresent()) {
@@ -309,16 +330,17 @@ public class DacServiceImpl implements DacService {
                     DocumentResponseDTO content = alfrescoService.getDocumentById(staticDoc.getAlfresco_id());
                     if (content != null && !Boolean.TRUE.equals(content.isErreur()) && content.getFile() != null) {
                         String ext = safeExtension(staticDoc.getFileExtension());
-                        String baseName = safeFileName(dynaDoc.getName() != null ? dynaDoc.getName() : "static_doc");
+                        String baseName = safeFileName(dynaDocCopy.getName() != null ? dynaDocCopy.getName() : "static_doc");
                         return saveBinaryDocument(content.getFile(), baseName + "_1" + (ext.isEmpty() ? "" : "." + ext), customDirPath);
                     }
                 }
             }
-            throw new IllegalArgumentException("Static DynaDoc has no linked document");
+            throw new IllegalArgumentException("Static dynaDocCopy has no linked document");
         }
 
-        String templateFileName = dynaDoc.getTemplateFileName();
-        File templateFile = new File(basePath, templateFileName);
+        String templateFileName = dynaDocCopy.getTemplateFileName();
+        // check if template file exists in the path basePath
+        File templateFile = new File(inputModifiedDocPath, templateFileName);
         if (!templateFile.exists()) {
             log.error("Template file not found: {}", templateFile.getAbsolutePath());
             throw new IllegalArgumentException("Template file not found: " + templateFile.getAbsolutePath());
@@ -741,9 +763,13 @@ public class DacServiceImpl implements DacService {
 
                 String pattern = "**" + key + "**";
                 if (newText.contains(pattern)) {
-                    String value = entry.getValue() != null ? entry.getValue() : "";
-                    newText = newText.replace(pattern, value);
-                    modified = true;
+                    String value = entry.getValue();
+
+                    // Si la valeur est vide ou null, on garde le marqueur **key**
+                    if (value != null && !value.trim().isEmpty()) {
+                        newText = newText.replace(pattern, value);
+                        modified = true;
+                    }
                 }
             }
             
@@ -771,12 +797,12 @@ public class DacServiceImpl implements DacService {
         // If there are leftover **, it means they didn't match any key.
         // We can optionally leave them or remove them. 
         // The previous logic removed all **, so we maintain that behavior for consistency.
-        for (XWPFRun run : runs) {
+        /*for (XWPFRun run : runs) {
             String text = run.getText(0);
             if (text != null && text.contains("**")) {
                  run.setText(text.replace("**", ""), 0);
             }
-        }
+        }*/
     }
 
     private void mergeTagRuns(XWPFParagraph paragraph) {
@@ -1310,6 +1336,10 @@ public class DacServiceImpl implements DacService {
             }
         }
 
+        log.info("DAC created successfully .......................... ");
+
+        //save all dyna docs into dyna docs copy
+        dynaDocsCopyServiceImpl.cloneDynaDocsIntoDynaDocsCopie(savedCdac, latestDocsFiltred);
         return savedCdac;
     }
     public String generateDacRef(Integer sequenceNumber, String nom_ac,Ppm ppm) {
@@ -1429,12 +1459,14 @@ public class DacServiceImpl implements DacService {
             }
            // List<DynaDocs> latestByCategoryAndModePassationAndModel =  dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForDac, modePassationIdForDac,modelId);
 
-            List<DynaDocs> latestDocsFiltred =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForDac, modePassationIdForDac,modelId);
-            for (DynaDocs dd : latestDocsFiltred) {
+            List<DynaDocsCopy> latestDynaDocsCopy = dynaDocsCopyRepository.findActiveLastVersionByCriteria(dacId,
+                    dacVer, typeMarcheIdForDac, modePassationIdForDac, modelId);
+
+            for (DynaDocsCopy dd : latestDynaDocsCopy) {
                 String key = dd.getId() + ":" + dd.getVersion();
                 if (!docPairs.containsKey(key)) {
                     docPairs.put(key, new int[]{dd.getId(), dd.getVersion()});
-                    orderByKey.put(key, dd.getDynaDocOrder() != null ? dd.getDynaDocOrder() : Integer.MAX_VALUE);
+                    orderByKey.put(key, dd.getOrdre() != null ? dd.getOrdre() : Integer.MAX_VALUE);
                 }
             }
         } else {
@@ -1773,7 +1805,6 @@ public class DacServiceImpl implements DacService {
                                 copy.setDac(row);
                                 dacDocsDetailsRepository.save(copy);
                             }
-                            log.info("7777777777777777777777");
                         }
                     } else {
                         // No prior rows: do nothing (empty snapshot). Rows will be created when user inputs data.
@@ -1919,15 +1950,23 @@ public class DacServiceImpl implements DacService {
         // get dynamic document AAO from Dac Docs with dac ID and Version
         DynaDocs dynaDoc = dynaDocsRepository.findByIdDynaDocsIdAndDynaDocsVer(dacDocsAAO.getDynaField().getDynaDocs().getId(), dacDocsAAO.getDynaField().getDynaDocs().getVersion()).orElse(null);
 
-        if (dynaDoc == null) {
+        //get dynamic document AAO from Dac Docs with dac ID and Version
+        DynaDocsCopy dynaDocCopy = dynaDocsCopyRepository.findByIdDynaDocsIdAndDynaDocsVer(dacDocsAAO.getDynaField().getDynaDocs().getId(), dacDocsAAO.getDynaField().getDynaDocs().getVersion(),dacId,dacVersion).orElse(null);
+
+        if (dynaDocCopy == null) {
             log.error("No AAO document found for Dac ID: {}, Version: {}", dacId, dacVersion);
             throw new IllegalArgumentException("No AAO found for Dac ID: " + dacId + ", Version: " + dacVersion);
         }
 
-        // retrive propreties for dyna doc
-        Integer dynaDocsId = dynaDoc.getId();
-        Integer dynaDocsVer = dynaDoc.getVersion();
-        String templateFileName = dynaDoc.getTemplateFileName();
+        // retrive propreties for dyna doc ==> old version
+        //Integer dynaDocsId = dynaDoc.getId();
+        //Integer dynaDocsVer = dynaDoc.getVersion();
+        //String templateFileName = dynaDoc.getTemplateFileName();
+
+        // retrive propreties for dyna doc copy ==> new version
+        Integer dynaDocsId = dynaDocCopy.getDynaDocs().getId();
+        Integer dynaDocsVer = dynaDocCopy.getDynaDocs().getVersion();
+        String templateFileName = dynaDocCopy.getDynaDocs().getTemplateFileName();
 
         // create output directory
         File templateFile = new File(basePath, templateFileName);
@@ -2135,6 +2174,9 @@ public class DacServiceImpl implements DacService {
                         dacDocsRepository.save(row);
                 }
             }
+            log.info("DAC created successfully -*-*-*-*---*-*-*-*-**-* ");
+            //save all dyna docs into dyna docs copy
+            dynaDocsCopyServiceImpl.cloneDynaDocsIntoDynaDocsCopie(savedDac, latestDocsFiltred);
             createdDacs.add(savedDac);
         }
 

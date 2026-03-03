@@ -12,6 +12,8 @@ import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
+import com.sigmap.common.dyna_docs_copy.DynaDocsCopy;
+import com.sigmap.common.dyna_docs_copy.DynaDocsCopyRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,9 +47,13 @@ public class DacController {
   private final DacService dacService;
   private final DynaDocsRepository dynaDocsRepository;
     private final DacRepository dacRepository;
+    private final DynaDocsCopyRepository dynaDocsCopyRepository;
 
   @Value("${templateDac.dac.inputDocPath}")
   private String basePath;
+
+  @Value("${templateDac.dac.inputModifiedDocPath}")
+  private String inputModifiedDocPath;
 
   @Value("${templateDac.dac.outputDocPath}")
   private String customDirPath;
@@ -55,10 +61,11 @@ public class DacController {
   @Value("${documents.convertUrl}")
   private String convertUrl;
 
-  public DacController(DacService dacService, DynaDocsRepository dynaDocsRepository, DacRepository dacRepository) {
+  public DacController(DacService dacService, DynaDocsRepository dynaDocsRepository, DacRepository dacRepository,DynaDocsCopyRepository dynaDocsCopyRepository) {
     this.dacService = dacService;
     this.dynaDocsRepository = dynaDocsRepository;
       this.dacRepository = dacRepository;
+      this.dynaDocsCopyRepository = dynaDocsCopyRepository;
   }
 
 
@@ -120,12 +127,17 @@ public class DacController {
     DacResponce responce = DacMapper.INSTANCE.map(saved);
     return ResponseEntity.status(HttpStatus.CREATED).body(responce);
   }
+
+
   @PostMapping("/generate-specific-pdf")
   public ResponseEntity<byte[]> generatePdfWithGotenberg(@RequestBody DacRequest request) {
     try {
+      log.info("Generating PDF for DAC ID: {} and Version: {}", request.getDacId(), request.getDacVer());
+      // get the dynaDocCopy
+      DynaDocsCopy dynaDocCopy = dynaDocsCopyRepository.findByIdDynaDocsIdAndDynaDocsVer(request.getDynaDocsId(), request.getDynaDocsVer(),request.getDacId(),request.getDacVer())
+              .orElseThrow(() -> new IllegalArgumentException("DynaDocsCopy not found for ID: " + request.getDynaDocsId() + ", Version: " + request.getDynaDocsVer()));
       // 1. Generate DOCX file as before
-      String generatedFile = dacService.generateDocumentWithBookmarks(
-              request.getDacId(), request.getDacVer(), request.getDynaDocsId(), request.getDynaDocsVer(), basePath, customDirPath);
+      String generatedFile = dacService.generateDocumentWithBookmarks( request.getDacId(), request.getDacVer(), dynaDocCopy.getDynaDocs().getId(), dynaDocCopy.getDynaDocs().getVersion(), inputModifiedDocPath, customDirPath);
 
       log.info("Generated file .........: {}", generatedFile);
       // 2. Prepare the file for upload
@@ -165,8 +177,13 @@ public class DacController {
   @PostMapping("/generate-specific-docx")
   public ResponseEntity<byte[]> downloadDocx(@RequestBody DacRequest request) {
     try {
+
+      // get the list of dynadocs from dynaDocsCopy
+      DynaDocsCopy dynaDocCopy = dynaDocsCopyRepository.findByIdDynaDocsIdAndDynaDocsVer(request.getDynaDocsId(), request.getDynaDocsVer(),request.getDacId(),request.getDacVer())
+              .orElseThrow(() -> new IllegalArgumentException("DynaDocsCopy not found for ID: " + request.getDynaDocsId() + ", Version: " + request.getDynaDocsVer()));
+
       // 1. Generate DOCX file
-      String generatedFile = dacService.generateDocumentWithBookmarks(request.getDacId(), request.getDacVer(), request.getDynaDocsId(), request.getDynaDocsVer(), basePath, customDirPath);
+      String generatedFile = dacService.generateDocumentWithBookmarks(request.getDacId(), request.getDacVer(), dynaDocCopy.getDynaDocs().getId(), dynaDocCopy.getDynaDocs().getVersion(), inputModifiedDocPath, customDirPath);
 
       log.info("Generated DOCX file: {}", generatedFile);
 
@@ -188,12 +205,21 @@ public class DacController {
     }
     return null;
   }
+
+
   @PostMapping("/previsualiser-specific-pdf")
   public ResponseEntity<Map<String, String>> generatePdfForVisualise(@RequestBody DacRequest request) {
     try {
+
+      // get the dynadoc from dynaDocsCopy
+      DynaDocsCopy dynaDocCopy = dynaDocsCopyRepository.findByIdDynaDocsIdAndDynaDocsVer(request.getDynaDocsId(), request.getDynaDocsVer(),request.getDacId(),request.getDacVer())
+              .orElseThrow(() -> new IllegalArgumentException("DynaDocsCopy not found for ID: " + request.getDynaDocsId() + ", Version: " + request.getDynaDocsVer()));
+
+      log.error("DynaDocsCopy --------- ID: {} , Version: {}", dynaDocCopy.getDynaDocs().getId(), dynaDocCopy.getDynaDocs().getVersion());
+
       // 1. Generate DOCX file
       String generatedFile = dacService.generateDocumentWithBookmarks(
-              request.getDacId(), request.getDacVer(), request.getDynaDocsId(), request.getDynaDocsVer(), basePath, customDirPath);
+              request.getDacId(), request.getDacVer(), dynaDocCopy.getDynaDocs().getId(), dynaDocCopy.getDynaDocs().getVersion(), inputModifiedDocPath, customDirPath);
 
       log.info("Generated DOCX file: {}", generatedFile);
 
@@ -234,6 +260,7 @@ public class DacController {
 
     } catch (Exception e) {
       log.error("Error generating PDF: {}", e.getMessage());
+      log.error("Error generating PDF: {}", e.getStackTrace());
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
     }
   }
@@ -244,7 +271,7 @@ public class DacController {
   public ResponseEntity<byte[]> replaceBookmarksAndGenerateListDOCpdf(@RequestBody DacListRequest request) {
     try {
       // . Generate multiple DOCX files as before
-      List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(request.getDacId(), request.getDacVer(), basePath, customDirPath);
+      List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(request.getDacId(), request.getDacVer(), inputModifiedDocPath, customDirPath);
 
       log.info("Generated files .........: {}", generatedFiles);
 
@@ -327,7 +354,7 @@ public class DacController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
       }
 
-      List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
+      List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), inputModifiedDocPath, customDirPath);
 
       /* ======================================================
            CASE 1: DOCX → ZIP DOWNLOAD
@@ -441,7 +468,7 @@ public class DacController {
     try {
 
       // 1. Generate DOCX
-      String generatedFilePath = dacService.generateDAODocumentWithBookmarks(request.getDacId(),request.getDacVersion(),request.getSignataire(),request.getFonction(),basePath,customDirPath);
+      String generatedFilePath = dacService.generateDAODocumentWithBookmarks(request.getDacId(),request.getDacVersion(),request.getSignataire(),request.getFonction(),inputModifiedDocPath,customDirPath);
 
       File docxFile = new File(generatedFilePath);
 
