@@ -9,8 +9,7 @@ import com.sigmap.common.dyna_form.response.DynaFormResponse;
 import com.sigmap.common.entity.ProcessStatus;
 import lombok.Data;
 
-import java.util.Calendar;
-import java.util.List;
+import java.util.*;
 
 @Data
 public class DacResponseDTO {
@@ -38,4 +37,12 @@ public class DacResponseDTO {
     private String conditionsParticipation;
     private String responsableDacId;
     private List<DacModelsDTO> dacModels;
+    private List<String> pvCPMP=new ArrayList<>();
+    private List<String> pvCNCMPSpecialise=new ArrayList<>();
+    private List<String> pvCNCMPPermanente=new ArrayList<>();
+    private Set<String> documentCPMP=new HashSet<>();
+    private Set<String> documentCNCMPSpecialise=new HashSet<>();
+    private Set<String> documentCNCMPPermanente=new HashSet<>();
+    private List<String> extraitCPMP=new ArrayList<>();
+    private List<String> extraitCNCMPP=new ArrayList<>();
 }

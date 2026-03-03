@@ -104,8 +104,7 @@ public class WebMasterServiceImpl implements WebMasterService {
         Optional<ModelPpm> modelPpm = modelPpmService.getModel(ppmId, ppm.getVersion());
         PpmWebsiteResponse ppmResponse = new PpmWebsiteResponse(ppm);
         List<RealisationPpmWebsite> allRealisationsDto = ppm.getRealisations().stream()
-                .map(RealisationPpmWebsite::new).skip(pageable.getOffset())
-                .limit(pageable.getPageSize()).collect(Collectors.toList());
+                .map(RealisationPpmWebsite::new).collect(Collectors.toList());
         Page<RealisationPpmWebsite> realisationPage = new PageImpl<>(allRealisationsDto, pageable, allRealisationsDto.size());
         PpmDetailsWebsite ppmDetailsWebsite = new PpmDetailsWebsite();
         ppmDetailsWebsite.setPpm(ppmResponse);

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="ppm" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="08764829-d4c5-4a53-b05e-75c31e8fd10c">
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
 	<property name="com.jaspersoft.studio.unit." value="pixel"/>
 	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
 	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
@@ -44,7 +44,7 @@
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 		<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="295"/>
 		<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="700"/>
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
 		<parameter name="ppm_id" class="java.lang.Integer"/>
 		<parameter name="ppm_ver" class="java.lang.Integer"/>
 		<parameter name="nom" class="java.lang.String"/>
@@ -222,7 +222,8 @@ p.ppm_id =  $P{ppm_id}
 	 p.ppm_ver,
 	 p.ppm_id,
 	 p.ref,
-	 p.nom as nomppm
+	 p.nom as nomppm,
+	 p.nbr_actualisation
 FROM  ppm p
 	INNER JOIN  ac a ON 
 	 p.ac_id = a.ac_id 
@@ -271,6 +272,7 @@ FROM  ppm p
 		<property name="com.jaspersoft.studio.field.label" value="nomppm"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
 	</field>
+	<field name="nbr_actualisation" class="java.lang.Integer"/>
 	<title>
 		<band height="83" splitType="Stretch">
 			<staticText>
@@ -285,7 +287,10 @@ FROM  ppm p
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="13" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["PLAN DE PASSATION DES MARCHES "+$F{annee}]]></textFieldExpression>
+				<textFieldExpression><![CDATA["PLAN DE PASSATION DES MARCHES " + $F{annee} +
+($F{nbr_actualisation} != null && $F{nbr_actualisation} > 0
+    ? " (ACTUALISATION N°" + $F{nbr_actualisation} + ")" 
+    : "")]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement stretchType="RelativeToTallestObject" x="80" y="26" width="620" height="30" uuid="fb58505e-4a80-4fcd-ace8-ff634385e61b"/>

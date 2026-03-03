@@ -48,6 +48,7 @@ import com.sigmap.common.monnaie.exceptions.MonnaieCodeAlreadyExist;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.parametrage_process_dac.exeptions.ParametrageProcessDacNotFound;
+import com.sigmap.common.ppms.exception.PpmNotAssociatedWithUserAcException;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.exception.*;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -1682,5 +1683,12 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(PpmNotAssociatedWithUserAcException.class)
+    public ResponseEntity<ErrorResponse> handlePpmNotAssociatedWithUserAc(PpmNotAssociatedWithUserAcException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
 }
 

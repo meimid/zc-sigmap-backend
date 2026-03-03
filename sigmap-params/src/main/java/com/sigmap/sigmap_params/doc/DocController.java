@@ -19,6 +19,7 @@ import com.sigmap.common.reunion.ReunionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -199,8 +200,8 @@ public class DocController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/download/meeting")
-    public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocumentForPpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+    @PostMapping("/download/meeting-ppm")
+    public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocumentForPpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
 
         byte[]  fileContent = downloadDocsService.downloadPpmArgumentDocumentForPpm(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
@@ -214,7 +215,7 @@ public class DocController {
     }
 
     @PostMapping("/download/meeting-ppm-for-meeting")
-    public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocumentMeeting(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+    public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocumentMeeting(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
 
         byte[]  fileContent = downloadDocsService.downloadPpmArgumentDocumentForReunion(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
@@ -227,5 +228,61 @@ public class DocController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/download/meeting-dac")
+    public ResponseEntity<DocumentResponseDTO> downloadDacArgumentDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadDacArgumentDocumentForDac(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download/meeting-dac-for-meeting")
+    public ResponseEntity<DocumentResponseDTO> downloadDacArgumentDocumentForMeeting(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadDacArgumentDocumentForReunion(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download/com")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
+    public ResponseEntity<DocumentResponseDTO> downloadComDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadComDocument(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download/dac")
+    public ResponseEntity<DocumentResponseDTO> downloadDacDocsDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadDacDocsDocument(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
 
 }
