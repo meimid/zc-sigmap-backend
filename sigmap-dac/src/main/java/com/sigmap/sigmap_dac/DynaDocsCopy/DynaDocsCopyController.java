@@ -2,7 +2,7 @@ package com.sigmap.sigmap_dac.DynaDocsCopy;
 
 import com.sigmap.common.dyna_docs_copy.DynaDocsCopy;
 import com.sigmap.common.dyna_docs_copy.DynaDocsCopyService;
-import com.sigmap.common.dyna_docs_copy.request.DynaDocsCopyRequestUpload;
+import com.sigmap.common.docs.exeptions.ErrorResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +30,9 @@ public class DynaDocsCopyController {
     }
 
     @PostMapping(value = "/upload-modified/{id}")
-    public ResponseEntity<String> uploadModifiedFile(@PathVariable Integer id, @RequestParam MultipartFile file) {
+    public ResponseEntity<ErrorResponse> uploadModifiedFile(@PathVariable Integer id, @RequestParam MultipartFile file) {
         dynaDocsCopyService.uploadModifiedFiles(id, file);
-        return ResponseEntity.ok("File updated successfully");
+        ErrorResponse response = new ErrorResponse(200, "File updated successfully");
+        return ResponseEntity.ok(response);
     }
 }
