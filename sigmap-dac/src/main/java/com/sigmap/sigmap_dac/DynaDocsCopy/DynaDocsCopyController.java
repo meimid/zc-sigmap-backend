@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -28,9 +29,9 @@ public class DynaDocsCopyController {
         );
     }
 
-    @PostMapping(value = "/upload-modified", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> uploadModifiedFile( @ModelAttribute DynaDocsCopyRequestUpload request ) {
-        dynaDocsCopyService.uploadModifiedFiles(request);
+    @PostMapping(value = "/upload-modified/{id}")
+    public ResponseEntity<String> uploadModifiedFile(@PathVariable Integer id, @RequestParam MultipartFile file) {
+        dynaDocsCopyService.uploadModifiedFiles(id, file);
         return ResponseEntity.ok("File updated successfully");
     }
 }

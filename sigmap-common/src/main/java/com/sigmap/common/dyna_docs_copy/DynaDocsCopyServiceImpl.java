@@ -60,15 +60,15 @@ public class DynaDocsCopyServiceImpl implements DynaDocsCopyService {
 
     @Transactional
     @Override
-    public void uploadModifiedFiles(DynaDocsCopyRequestUpload request) {
-        if (request.getId() == null) {
+    public void uploadModifiedFiles(Integer id , MultipartFile file) {
+        if (id == null) {
             throw new IllegalArgumentException("ID is required");
         }
-        if (request.getFile() == null || request.getFile().isEmpty()) {
+        if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is required");
         }
 
-        DynaDocsCopy current = dynaDocsCopyRepository.findOneById(request.getId())
+        DynaDocsCopy current = dynaDocsCopyRepository.findOneById(id)
                 .orElseThrow(() -> new RuntimeException("DynaDocsCopy not found"));
 
         int nextVersion = (current.getVersion() == null ? 0 : current.getVersion()) + 1;
@@ -78,19 +78,20 @@ public class DynaDocsCopyServiceImpl implements DynaDocsCopyService {
 
 
         // 2) Update existing row (overwrite update)
-        Dac dac = dacService.findById(request.getDacId(), request.getDacVer())
+        Dac dac = dacService.findById(current.getDac().getDacId(), current.getDac().getDacVer())
                 .orElseThrow(() -> new RuntimeException("DAC not found"));
-        DynaDocs dynaDocs = dynaDocsService.findById(request.getDynaDocsId(), request.getDynaDocsVer())
+
+        DynaDocs dynaDocs = dynaDocsService.findById(current.getDynaDocs().getId(), current.getDynaDocs().getVersion())
                 .orElseThrow(() -> new RuntimeException("DynaDocs not found"));
 
-        // 3) Update existing row (overwrite update)
+        // 3) Save new file
+        String storedFileName = storeNewFile(file);
+        SaveInformationNewFile(current, file, storedFileName, nextVersion, dac, dynaDocs);
+
+        // 4) Update existing row (overwrite update)
         current.setStatus(ActiveStatus.NON_ACTIF);
 
         dynaDocsCopyRepository.save(current);
-
-        // 4) Save new file
-        String storedFileName = storeNewFile(request.getFile());
-        SaveInformationNewFile(request, storedFileName, nextVersion, dac, dynaDocs);
 
     }
 
@@ -140,17 +141,17 @@ public class DynaDocsCopyServiceImpl implements DynaDocsCopyService {
         }
     }
 
-    private void SaveInformationNewFile(DynaDocsCopyRequestUpload request,String storedFileName, int version, Dac dac, DynaDocs dynaDocs) {
+    private void SaveInformationNewFile(DynaDocsCopy currentCopy,MultipartFile file, String storedFileName, int version, Dac dac, DynaDocs dynaDocs) {
 
         DynaDocsCopy entity = new DynaDocsCopy();
-        entity.setIsAAO(request.getIsAAO());
+        entity.setIsAAO(currentCopy.getIsAAO());
         entity.setVersion(version);
-        entity.setOrdre(request.getOrdre());
-        entity.setName(FilenameUtils.getBaseName(request.getFile().getOriginalFilename()));
+        entity.setOrdre(currentCopy.getOrdre());
+        entity.setName(FilenameUtils.getBaseName(file.getOriginalFilename()));
         entity.setTemplateFileName(storedFileName);
         entity.setStatus(ActiveStatus.ACTIF);
         entity.setDac(dac);
-        entity.setIsStatic(request.getIsStatic());
+        entity.setIsStatic(currentCopy.getIsStatic());
         entity.setDynaDocs(dynaDocs);
 
         dynaDocsCopyRepository.save(entity);
