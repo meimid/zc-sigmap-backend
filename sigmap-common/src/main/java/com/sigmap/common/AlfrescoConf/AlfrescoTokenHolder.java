@@ -80,7 +80,7 @@ public class AlfrescoTokenHolder {
     /**
      * Authentification simple (1 tentative)
      */
-    private void authenticate() {
+    void authenticate() {
         String url = alfrescoUrl + "/api/-default-/public/authentication/versions/1/tickets";
 
         Map<String, Object> credentials = new HashMap<>();
