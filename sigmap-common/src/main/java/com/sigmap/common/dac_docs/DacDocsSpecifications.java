@@ -1,6 +1,14 @@
 package com.sigmap.common.dac_docs;
 
+import com.sigmap.common.appel_offre.AppelOffre;
+import com.sigmap.common.dac.Dac;
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.ppms.Ppm;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.util.List;
 
 public class DacDocsSpecifications {
 
@@ -136,5 +144,23 @@ public class DacDocsSpecifications {
         .and(byDynaFieldsId(dynaFieldsId))
         .and(bySourceId(sourceId))
         .and(byFieldValue(fieldValue));
+  }
+
+  public static Specification<DacDocs> hasDocId(Integer docId) {
+    return (root, query, cb) -> {
+      Join<DacDocs, Docs> docJoin = root.join("docs", JoinType.INNER);
+      return cb.equal(docJoin.get("id"), docId);
+    };
+  }
+
+  public static Specification<DacDocs> ppmAcIn(List<Integer> acIds) {
+    return (root, query, cb) -> {
+      // DacDocs -> Dac -> AppelOffre -> Ppm -> Ac
+      Join<DacDocs, Dac> dacJoin = root.join("dac", JoinType.INNER);
+      Join<Dac, AppelOffre> aoJoin = dacJoin.join("appelOffre", JoinType.INNER);
+      Join<AppelOffre, Ppm> ppmJoin = aoJoin.join("ppm", JoinType.INNER);
+
+      return ppmJoin.get("ac").get("id").in(acIds);
+    };
   }
 } 

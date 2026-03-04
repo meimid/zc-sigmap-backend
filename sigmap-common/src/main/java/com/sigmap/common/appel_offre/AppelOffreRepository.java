@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface AppelOffreRepository extends JpaRepository<AppelOffre, Integer>, JpaSpecificationExecutor<AppelOffre> {
@@ -23,4 +25,14 @@ public interface AppelOffreRepository extends JpaRepository<AppelOffre, Integer>
 
     @Query("SELECT a from AppelOffre a where a.isDeleted = false")
     List<AppelOffre> getAllNotDeleted();
+
+    @Query("SELECT DISTINCT a FROM AppelOffre a " +
+            "LEFT JOIN a.ppm p " +
+            "LEFT JOIN p.ac ac " +
+            "WHERE a.isDeleted = false " +
+            "AND (ac.id IN :acIds " +
+            "OR a.id IN (SELECT d.appelOffre.id FROM Dac d JOIN d.coms c WHERE d.isDeleted = false AND c.id IN :comIds))")
+    Page<AppelOffre> findAllFilteredByUser(@Param("acIds") List<Integer> acIds,
+            @Param("comIds") List<Integer> comIds,
+            Pageable pageable);
 }

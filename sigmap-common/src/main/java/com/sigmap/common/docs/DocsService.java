@@ -80,7 +80,7 @@ public interface DocsService {
      * @return the Docs with the given specification
      */
     Optional<Docs> findOne(Specification<Docs> specification);
-    Optional <DocumentResponseDTO> getDocumentInformation(String alfrescoId);
+    DocumentResponseDTO getDocumentInformation(String alfrescoId);
     byte[] downloadDocument(String alfrescoId) throws IOException, DocsNotFoundException;
 
 
