@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:17496719590116-1
+-- changeset sigmap:17496719590117-1
 
 CREATE TABLE IF NOT EXISTS notification (
     id              BIGINT          NOT NULL AUTO_INCREMENT,
@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS notification (
     PRIMARY KEY (id)
 );
 
--- Performance indexes
 CREATE INDEX idx_notification_user_id       ON notification (user_id);
 CREATE INDEX idx_notification_source        ON notification (source);
 CREATE INDEX idx_notification_is_read       ON notification (is_read);
