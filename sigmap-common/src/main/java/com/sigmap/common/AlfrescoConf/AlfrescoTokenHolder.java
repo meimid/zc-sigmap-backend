@@ -4,10 +4,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Classe responsable de la gestion du ticket d'authentification pour Alfresco.
@@ -30,6 +34,12 @@ public class AlfrescoTokenHolder {
     @Value("${alfresco.password}")
     private String password;
 
+    private static final int MAX_RETRY = 3;
+    private static final long RETRY_DELAY_MS = 500;
+
+    // Lock non-bloquant : un seul thread authentifie, les autres attendent sans bloquer
+    private final ReentrantLock authLock = new ReentrantLock();
+
     private final RestTemplate restTemplate;
 
     public AlfrescoTokenHolder(RestTemplate restTemplate) {
@@ -41,46 +51,94 @@ public class AlfrescoTokenHolder {
         this.restTemplate.setRequestFactory(factory);
     }
 
-    public synchronized String getTicket() {
-        if (ticket == null || System.currentTimeMillis() > expirationTime) {
-            log.warn("Alfresco ticket expired or null. Re-authenticating...");
-            authenticateWithRetry();
-        } else {
+    public String getTicket() {
+        // Double-checked locking : évite le goulot d'étranglement du synchronized
+        if (isTicketValid()) {
             log.debug("Using existing Alfresco ticket");
+            return ticket;
         }
+
+        // Un seul thread à la fois peut renouveler le ticket
+        if (authLock.tryLock()) {
+            try {
+                // Re-vérifier après acquisition du lock (un autre thread a peut-être déjà authentifié)
+                if (!isTicketValid()) {
+                    authenticateWithRetry();
+                }
+            } finally {
+                authLock.unlock();
+            }
+        } else {
+            // Un autre thread est en train d'authentifier → attendre qu'il finisse
+            waitForValidTicket();
+        }
+
+        if (ticket == null) {
+            throw new RuntimeException("Alfresco authentication failed after retries. Service unavailable.");
+        }
+
         return ticket;
     }
 
-    /**
-     * Authentification avec retry réseau
-     */
-    private void authenticateWithRetry() {
-        int maxAttempts = 3;
-        long delay = 500; // ms
+    private boolean isTicketValid() {
+        return ticket != null && System.currentTimeMillis() < expirationTime;
+    }
 
-        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+    private void waitForValidTicket() {
+        long deadline = System.currentTimeMillis() + 5000; // attendre max 5s
+        while (!isTicketValid() && System.currentTimeMillis() < deadline) {
             try {
-                authenticate();
-                return; // succès
-            } catch (Exception e) {
-                log.error("Authentication attempt {}/{} failed", attempt, maxAttempts, e);
-
-                if (attempt == maxAttempts) {
-                    log.error("All authentication attempts failed");
-                    throw new RuntimeException("Unable to authenticate with Alfresco", e);
-                }
-
-                try {
-                    Thread.sleep(delay);
-                } catch (InterruptedException ignored) {}
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while waiting for Alfresco ticket");
             }
         }
     }
 
-    /**
-     * Authentification simple (1 tentative)
-     */
-    void authenticate() {
+    private void authenticateWithRetry() {
+        Exception lastException = null;
+
+        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+                log.info("Alfresco authentication attempt {}/{}", attempt, MAX_RETRY);
+                doAuthenticate();
+                log.info("Alfresco ticket obtained successfully on attempt {}", attempt);
+                return; // succès
+            } catch (ResourceAccessException e) {
+                // Hôte inaccessible → retry avec backoff
+                lastException = e;
+                log.warn("Alfresco host unreachable (attempt {}/{}): {}", attempt, MAX_RETRY, e.getMessage());
+            } catch (HttpServerErrorException e) {
+                // Erreur 5xx côté Alfresco → retry
+                lastException = e;
+                log.warn("Alfresco server error {} (attempt {}/{})", e.getStatusCode(), attempt, MAX_RETRY);
+            } catch (HttpClientErrorException e) {
+                // Erreur 4xx (mauvais credentials, etc.) → inutile de retry
+                log.error("Alfresco authentication failed with client error: {}", e.getStatusCode());
+                throw new RuntimeException("Invalid Alfresco credentials or configuration", e);
+            }
+
+            if (attempt < MAX_RETRY) {
+                long delay = RETRY_DELAY_MS * attempt; // backoff exponentiel simple
+                log.info("Retrying in {}ms...", delay);
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Retry interrupted");
+                }
+            }
+        }
+
+        // Tous les retries ont échoué → invalider le ticket
+        log.error("All {} authentication attempts failed. Last error: {}", MAX_RETRY,
+                lastException != null ? lastException.getMessage() : "unknown");
+        ticket = null;
+        expirationTime = 0;
+    }
+
+    private void doAuthenticate() {
         String url = alfrescoUrl + "/api/-default-/public/authentication/versions/1/tickets";
 
         Map<String, Object> credentials = new HashMap<>();
@@ -89,29 +147,30 @@ public class AlfrescoTokenHolder {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(credentials, headers);
-
-        log.info("Authenticating to Alfresco...");
 
         ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, request, Map.class);
 
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Authentication failed with status: " + response.getStatusCode());
-        }
-
         Map<String, Object> body = response.getBody();
-
         if (body == null || body.get("entry") == null) {
             throw new RuntimeException("Invalid authentication response from Alfresco");
         }
 
         Map<String, Object> entry = (Map<String, Object>) body.get("entry");
-        ticket = (String) entry.get("id");
+        String newTicket = (String) entry.get("id");
 
-        //  marge de sécurité
-        expirationTime = System.currentTimeMillis() + (1000 * 60 * 25);
+        if (newTicket == null || newTicket.isBlank()) {
+            throw new RuntimeException("Empty ticket received from Alfresco");
+        }
 
-        log.info("New Alfresco ticket generated successfully");
+        this.ticket = newTicket;
+        this.expirationTime = System.currentTimeMillis() + (1000 * 60 * 23); // 23 min (marge de sécurité)
+    }
+
+    // Forcer le renouvellement si on reçoit un 401 ailleurs dans l'app
+    public void invalidateTicket() {
+        log.warn("Alfresco ticket manually invalidated (likely 401 received)");
+        this.ticket = null;
+        this.expirationTime = 0;
     }
 }
