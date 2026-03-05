@@ -4,7 +4,6 @@ import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsService;
-import com.sigmap.common.dyna_docs_copy.request.DynaDocsCopyRequestUpload;
 import com.sigmap.common.entity.ActiveStatus;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -56,7 +55,28 @@ public class DynaDocsCopyServiceImpl implements DynaDocsCopyService {
         return dynaDocsCopies;
     }
 
+    @Override
+    public DynaDocsCopy findById(Integer id) {
+        return dynaDocsCopyRepository.findById(id).orElseThrow(() -> new RuntimeException("DynaDocsCopy not found"));
+    }
 
+    @Override
+    public byte[] downloadModifiedFile(Integer id) {
+        DynaDocsCopy current = findById(id);
+        String templateName = current.getTemplateFileName();
+        if (templateName == null || templateName.isBlank()) {
+            throw new RuntimeException("No template file name associated with this copy.");
+        }
+        Path filePath = safeResolve(inputModifiedDocPath, templateName);
+        if (!Files.exists(filePath)) {
+            throw new RuntimeException("Modified file not found on server.");
+        }
+        try {
+            return Files.readAllBytes(filePath);
+        } catch (IOException e) {
+            throw new RuntimeException("Error reading file: " + e.getMessage(), e);
+        }
+    }
 
     @Transactional
     @Override

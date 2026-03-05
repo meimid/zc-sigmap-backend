@@ -215,7 +215,7 @@ public class DacController {
       DynaDocsCopy dynaDocCopy = dynaDocsCopyRepository.findByIdDynaDocsIdAndDynaDocsVer(request.getDynaDocsId(), request.getDynaDocsVer(),request.getDacId(),request.getDacVer())
               .orElseThrow(() -> new IllegalArgumentException("DynaDocsCopy not found for ID: " + request.getDynaDocsId() + ", Version: " + request.getDynaDocsVer()));
 
-      log.error("DynaDocsCopy --------- ID: {} , Version: {}", dynaDocCopy.getDynaDocs().getId(), dynaDocCopy.getDynaDocs().getVersion());
+      log.debug("DynaDocsCopy --------- ID: {} , Version: {}", dynaDocCopy.getDynaDocs().getId(), dynaDocCopy.getDynaDocs().getVersion());
 
       // 1. Generate DOCX file
       String generatedFile = dacService.generateDocumentWithBookmarks(
