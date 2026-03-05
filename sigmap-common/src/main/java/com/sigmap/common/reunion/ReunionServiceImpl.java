@@ -948,11 +948,14 @@ public class ReunionServiceImpl implements ReunionService{
         String formattedDate = localDate.format(
                 DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
         );
+
         NotificationRequest notificationRequest = new NotificationRequest();
-        notificationRequest.setTitle("Invitation a la Reunion");
-        notificationRequest.setMessage("Nous vous informons que la réunion du comité « "
-                +reunion.getCom().getNom()+
-                " » se tiendra le "+formattedDate +" à "+reunion.getEmplacement()+".");
+        notificationRequest.setTitle("Invitation à la réunion");
+        notificationRequest.setMessage(
+                "Nous vous informons que la réunion du comité « " + reunion.getCom().getNom() +
+                        " » aura lieu le " + formattedDate +
+                        " à " + reunion.getEmplacement() + "."
+        );
         notificationRequest.setSource(NotificationSource.REUNION);
         notificationRequest.setType(NotificationType.INFO);
         notificationService.sendToMultipleUsers(userIds, notificationRequest);
@@ -1501,11 +1504,15 @@ public class ReunionServiceImpl implements ReunionService{
                 DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
         );
         NotificationRequest notificationRequest = new NotificationRequest();
-        notificationRequest.setTitle("Avis d’annulation – Réunion du comité");
+        notificationRequest.setTitle(
+                "Avis d’annulation – Réunion"
+        );
+
         notificationRequest.setMessage(
-                "Nous vous informons que la réunion du comité « " + reunion.getCom().getNom() +
-                        " », initialement prévue le " + formattedDate + " à " + reunion.getEmplacement() +
-                        ", est annulée."
+                "Nous vous informons de l’annulation de la réunion du comité « " + reunion.getCom().getNom() +
+                        " », initialement prévue le " + formattedDate +
+                        " à " + reunion.getEmplacement() +
+                        "."
         );
         notificationRequest.setSource(NotificationSource.REUNION);
         notificationRequest.setType(NotificationType.INFO);
