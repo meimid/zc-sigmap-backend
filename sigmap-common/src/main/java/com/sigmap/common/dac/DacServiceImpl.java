@@ -2,7 +2,6 @@ package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
-import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.config.ModePassationType;
@@ -52,7 +51,6 @@ import com.sigmap.common.security.Authentication;
 import com.sigmap.common.model_dac.ModelDac;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
-import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
@@ -72,7 +70,6 @@ import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.SocieteDacID;
 import com.sigmap.common.societe_dac.SocieteDacRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
-import jakarta.persistence.criteria.Path;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.io.RandomAccessRead;
 import org.apache.pdfbox.io.RandomAccessReadBuffer;
@@ -89,18 +86,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import java.io.*;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.time.Year;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
@@ -109,23 +98,15 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
-import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.appel_offre.AppelOffre;
 import com.sigmap.common.appel_offre.AppelOffreRepository;
 import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
 import com.sigmap.common.dac.exeption.InvalidDacRequestException;
 import com.sigmap.common.dac.request.CreateDacFromAoRequest;
 import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
-import com.sigmap.common.dac.response.ParticipantResponse;
 import com.sigmap.common.dac_prix.DacPrixId;
 import com.sigmap.common.config.ModePassationEtape;
-import com.sigmap.common.monnaie.Monnaie;
-import com.sigmap.common.monnaie.MonnaieRepository;
-import com.sigmap.common.dac.response.DacWebsiteResponse;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Subquery;
 import com.sigmap.common.societe.Societe;
-import com.sigmap.common.societe.SocieteRepository;
 
 @Slf4j
 @Service
@@ -272,11 +253,15 @@ public class DacServiceImpl implements DacService {
             try (FileInputStream fis = new FileInputStream(templateFile);
                  XWPFDocument document = new XWPFDocument(fis)) {
 
-                // Create bookmark map with values from DacDocs, respecting field order and using the snapshot version
-                Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDoc.getId(), dynaDoc.getVersion());
+                // Create bookmark map with values from DacDocs, respecting field order and
+                // using the snapshot version
+                Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDoc.getDynaDocs().getId(),
+                        dynaDoc.getDynaDocs().getVersion());
 
-                // Handle multi-value fields (table and list bookmarks) using the snapshot version
-                processTableAndListBookmarks(document, dacId, dacVersion, dynaDoc.getId(), dynaDoc.getVersion());
+                // Handle multi-value fields (table and list bookmarks) using the snapshot
+                // version
+                processTableAndListBookmarks(document, dacId, dacVersion, dynaDoc.getDynaDocs().getId(),
+                        dynaDoc.getDynaDocs().getVersion());
 
                 // Replace bookmarks in the document
                 replaceBookmarks(document, bookmarks);
