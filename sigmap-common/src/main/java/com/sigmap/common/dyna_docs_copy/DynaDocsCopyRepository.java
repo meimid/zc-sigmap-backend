@@ -59,6 +59,30 @@ public interface DynaDocsCopyRepository extends JpaRepository<DynaDocsCopy, Inte
       @Param("dacId") Integer dacId,
       @Param("dacVer") Integer dacVer);
 
+
+  @Query("""
+          SELECT ddc
+          FROM DynaDocsCopy ddc
+          WHERE ddc.status = 'ACTIF'
+            AND ddc.version = (
+                  SELECT MAX(ddc2.version)
+                  FROM DynaDocsCopy ddc2
+                  WHERE ddc2.dac.dacId = ddc.dac.dacId
+                    AND ddc2.dac.dacVer = ddc.dac.dacVer
+                    AND ddc2.dynaDocs.id = ddc.dynaDocs.id
+                    AND ddc2.dynaDocs.version = ddc.dynaDocs.version
+                    AND ddc2.status = 'ACTIF'
+            )
+            AND ddc.dac.dacId = :dacId
+            AND ddc.dac.dacVer = :dacVer
+            ORDER BY ddc.ordre ASC
+      """)
+  List<DynaDocsCopy> findAllActiveLastVersionByDac(
+          @Param("dacId") Integer dacId,
+          @Param("dacVer") Integer dacVer);
+
+
+
   @Query("SELECT ddc FROM DynaDocsCopy ddc WHERE ddc.dynaDocs.id = :dynaDocsId AND ddc.dynaDocs.version = :dynaDocsVer And ddc.status = 'ACTIF' AND ddc.isDeleted = false and ddc.dac.dacId = :dacId and ddc.dac.dacVer = :dacVer" +
           " AND ddc.version = (SELECT MAX(ddc2.version) FROM DynaDocsCopy ddc2 WHERE ddc2.dac.dacId = ddc.dac.dacId AND ddc2.dac.dacVer = ddc.dac.dacVer AND ddc2.dynaDocs.id = ddc.dynaDocs.id AND ddc2.dynaDocs.version = ddc.dynaDocs.version AND ddc2.status = 'ACTIF')")
   Optional<DynaDocsCopy> findByIdDynaDocsIdAndDynaDocsVer (@Param("dynaDocsId") Integer dynaDocsId, @Param("dynaDocsVer") Integer dynaDocsVer, @Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer);

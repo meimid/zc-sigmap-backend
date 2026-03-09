@@ -168,7 +168,7 @@ public class DacServiceImpl implements DacService {
             throw new RuntimeException("No dac_docs data found for Dac ID: " + dacId + ", Version: " + dacVersion);
         }
         // find DynaDocsCopy last version activ to prevesualise
-        List<DynaDocsCopy> dynaDocCopy = dynaDocsCopyRepository.findActiveLastVersionByDac(dacId, dacVersion);
+        List<DynaDocsCopy> dynaDocCopy = dynaDocsCopyRepository.findAllActiveLastVersionByDac(dacId, dacVersion);
         if (dynaDocCopy.isEmpty()) {
             log.warn("No dyna_docs_copy data found for Dac ID: {}, Version: {}", dacId, dacVersion);
             throw new RuntimeException("No dyna_docs_copy data found for Dac ID: " + dacId + ", Version: " + dacVersion);
@@ -183,7 +183,7 @@ public class DacServiceImpl implements DacService {
             if (!docKeyPairs.containsKey(key)) {
                 docKeyPairs.put(key, new int[]{ddcId, ddcVer});
                 // Use the relation via field -> dynaDocs to get order when available
-                Integer order = null;
+                Integer order = ddc.getOrdre();
 
                 // Fallback to a large number to avoid NPEs; ordering will still be stable
                 docKeyToOrder.put(key, order != null ? order : Integer.MAX_VALUE);
@@ -212,13 +212,14 @@ public class DacServiceImpl implements DacService {
         // Step 3: Process each snapshot document in order
         for (DynaDocsCopy dynaDoc : dynaDocsCopyList) {
             docOreder = docOreder + 1;
+            // 1. Check if the current document in the loop is STATIC
             // If static doc: fetch linked Docs and integrate as-is (pdf/image)
 
             if (Boolean.TRUE.equals(dynaDoc.getIsStatic()))  {
                 try {
                     Optional<DacDocs> linked = dacDocsSnapshot.stream()
-                            .filter(dd -> Objects.equals(dd.getId().getDynaDocsId(), dynaDoc.getId())
-                                    && Objects.equals(dd.getId().getDynaDocsVer(), dynaDoc.getVersion())
+                            .filter(dd -> Objects.equals(dd.getId().getDynaDocsId(), dynaDoc.getDynaDocs().getId())
+                                    && Objects.equals(dd.getId().getDynaDocsVer(), dynaDoc.getDynaDocs().getVersion())
                                     && dd.getDocs() != null)
                             .findFirst();
                     if (linked.isPresent()) {
@@ -229,9 +230,15 @@ public class DacServiceImpl implements DacService {
                                     .isErreur()) && content.getFile() != null) {
                                 String ext = safeExtension(staticDoc.getFileExtension());
                                 String baseName = safeFileName(dynaDoc.getName() != null ? dynaDoc.getName() : "static_doc");
+
+                                // Save the static binary document with the docOreder included in its name
                                 String outputFilePath = saveBinaryDocument(content.getFile(), baseName + "_" + docOreder + (ext.isEmpty() ? "" : "." + ext), customDirPath);
+
+                                // <-- Adds static PDF to the final list in the correct order
                                 generatedFilePaths.add(outputFilePath);
-                                continue; // next doc
+
+                                // <-- Skips to the next document in the loop
+                                continue;
                             }
                         }
                     }
@@ -241,6 +248,7 @@ public class DacServiceImpl implements DacService {
                 }
             }
 
+            // 2. If it's NOT static, it proceeds to generate the DYNAMIC document
             String templateFileName = dynaDoc.getTemplateFileName();
             log.debug("Processing DynaDocs ID: {}, Version: {}, Template: {}", dynaDoc.getId(), dynaDoc.getVersion(), templateFileName);
 
@@ -253,21 +261,21 @@ public class DacServiceImpl implements DacService {
             try (FileInputStream fis = new FileInputStream(templateFile);
                  XWPFDocument document = new XWPFDocument(fis)) {
 
-                // Create bookmark map with values from DacDocs, respecting field order and
-                // using the snapshot version
+                // Create bookmark map with values from DacDocs, respecting field order and using the snapshot version
                 Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDoc.getDynaDocs().getId(),
                         dynaDoc.getDynaDocs().getVersion());
 
-                // Handle multi-value fields (table and list bookmarks) using the snapshot
-                // version
+                // Handle multi-value fields (table and list bookmarks) using the snapshot version
                 processTableAndListBookmarks(document, dacId, dacVersion, dynaDoc.getDynaDocs().getId(),
                         dynaDoc.getDynaDocs().getVersion());
 
                 // Replace bookmarks in the document
                 replaceBookmarks(document, bookmarks);
 
-                // Save the generated document
+                // Save the generated document with docOreder included
                 String outputFilePath = saveTempDocument(document, templateFileName, customDirPath, docOreder);
+
+                // <-- Adds dynamic DOCX to the final list in the correct order
                 generatedFilePaths.add(outputFilePath);
 
             } catch (IOException e) {
