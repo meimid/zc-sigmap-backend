@@ -59,6 +59,7 @@ public class SecurityConfig {
                     }))
         .authorizeHttpRequests(request -> request
                 .requestMatchers(
+                        "/ws/**",
                         "/token/**",
                         "/test",
                         "/swagger-ui/**",

@@ -593,7 +593,8 @@ public class KeycloakAdminService {
 
                     // create the history entry for the new AC
                     userAcHistoriqueService.createStartHistory(userId, id);
-                }else {
+                }
+                else {
                     if (id  == acPiloteId){
                         userAcRepository.removeAcPilote(id, userId);
                         UserAc existingUserAc = userAcRepository.findFirstByAcIdAndUserIdAndIsDeletedFalse(id, userId);
@@ -601,7 +602,7 @@ public class KeycloakAdminService {
                         userAcRepository.save(existingUserAc);
 
                         // create the history entry for the new AC
-                        userAcHistoriqueService.createStartHistory(userId, id);
+                       // userAcHistoriqueService.createStartHistory(userId, id);
                     }
                 }
             }

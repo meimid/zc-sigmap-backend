@@ -779,7 +779,8 @@ public class AlfrescoService {
             } catch (HttpClientErrorException.Unauthorized e) {
                 log.warn("Alfresco ticket expired (401). Retrying with new ticket...");
 
-                tokenHolder.authenticate(); // refresh ticket
+                tokenHolder.invalidateTicket(); // invalide proprement le ticket
+                tokenHolder.getTicket();        // renouvellement via le mécanisme centralisé
 
                 contentResponse = restTemplate.exchange(
                         contentUrl,

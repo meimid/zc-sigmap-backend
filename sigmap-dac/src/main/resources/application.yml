@@ -127,6 +127,7 @@ templateDac:
   dac:
     inputDocPath: ${INPUT_DAC_PATH:C:\\word\\templates\\}
     outputDocPath: ${OUTPUT_DAC_PATH:C:\\word\\temp\\}
+    inputModifiedDocPath: ${INPUT_MODIFIED_DAC_PATH:C:\\word\\modified\\}
 
 documents:
   convertUrl: ${CONVERT_DOCUMENT_URL:http://localhost:3000}

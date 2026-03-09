@@ -20,6 +20,8 @@ import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +41,8 @@ public class AppelOffreController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<AppelOffreResponse>> getAllAppelOffre(AppelOffreQuerry query, Pageable pageable) {
+    public ResponseEntity<Page<AppelOffreResponse>> getAllAppelOffre(AppelOffreQuerry query,
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<AppelOffre> appelOffre = appelOffreService.findAll(query.toSpecification(), pageable);
         Page<AppelOffreResponse> response = appelOffre.map(AppelOffreMapper.INSTANCE::map);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

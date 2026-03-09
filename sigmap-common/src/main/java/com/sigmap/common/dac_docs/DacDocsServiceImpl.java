@@ -529,8 +529,6 @@ public class DacDocsServiceImpl implements DacDocsService{
              targetDac = newDac;
         }
 
-        if (request.getDateLimiteSoumission() != null) targetDac.setDateLimiteSoumission(request.getDateLimiteSoumission());
-        if (request.getDateLimiteRecptionDemande() != null) targetDac.setDateLimiteRecptionDemande(request.getDateLimiteRecptionDemande());
         if (request.getPayant() != null) targetDac.setPayant(request.getPayant());
         if (request.getResponsableDacId() != null) targetDac.setResponsableDacId(request.getResponsableDacId());
         if (request.getConditionsParticipation() != null) targetDac.setConditionsParticipation(request.getConditionsParticipation());
@@ -768,8 +766,7 @@ public class DacDocsServiceImpl implements DacDocsService{
             throw new RuntimeException("Dac not found for ID: " + dacId);
         }
 
-        if (request.getDateLimiteSoumission() != null) targetDac.setDateLimiteSoumission(request.getDateLimiteSoumission());
-        if (request.getDateLimiteRecptionDemande() != null) targetDac.setDateLimiteRecptionDemande(request.getDateLimiteRecptionDemande());
+
         if (request.getPayant() != null) targetDac.setPayant(request.getPayant());
         if (request.getResponsableDacId() != null) targetDac.setResponsableDacId(request.getResponsableDacId());
         if (request.getConditionsParticipation() != null) targetDac.setConditionsParticipation(request.getConditionsParticipation());
@@ -998,15 +995,6 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (lang == null) {
             lang = Locale.forLanguageTag("fr");
         }
-        if (request.getDateLimiteSoumission() == null) {
-            errorsFR.append("La date limite de soumission est obligatoire, ");
-            errorsENG.append("Submission deadline is required, ");
-        }
-
-        if (request.getDateLimiteRecptionDemande() == null) {
-            errorsFR.append("La date limite de réception des demandes est obligatoire, ");
-            errorsENG.append("Deadline for receipt of requests is required, ");
-        }
 
         if (request.getPayant() == null) {
             errorsFR.append("le champ payant est obligatoire, ");
@@ -1016,17 +1004,6 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
             errorsFR.append("Le responsable du DAC est obligatoire, ");
             errorsENG.append("DAC responsible is required, ");
-        }
-
-        Calendar now = Calendar.getInstance();
-        if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
-            errorsFR.append("La date limite de soumission doit être dans le futur, ");
-            errorsENG.append("Submission deadline must be in the future, ");;
-        }
-
-        if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
-            errorsFR.append("La date limite de réception des demandes doit être dans le futur, ");
-            errorsENG.append("Deadline for receipt of requests must be in the future, ");
         }
 
         if (Boolean.TRUE.equals(request.getPayant())) {
@@ -2271,8 +2248,6 @@ public class DacDocsServiceImpl implements DacDocsService{
 
     boolean isDacModified(Dac dac, DacWithDacDocsRequest request) {
        // 1. Check basic attributes
-       if (request.getDateLimiteSoumission() != null && isDateDifferent(dac.getDateLimiteSoumission(), request.getDateLimiteSoumission())) return true;
-       if (request.getDateLimiteRecptionDemande() != null && isDateDifferent(dac.getDateLimiteRecptionDemande(), request.getDateLimiteRecptionDemande())) return true;
        
        if (request.getPayant() != null && !Objects.equals(dac.isPayant(), request.getPayant())) return true;
        
