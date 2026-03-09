@@ -1709,9 +1709,136 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
+    public List<Reunion> findAllByDacIdAndOptionalComId(Integer dacId, Integer comId, Specification<Reunion> specifications) {
+        boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
+        boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
+        String userId = Authentication.getCurrentUserId().orElseThrow(()->new UserIdRequiredException(""));
+
+        Specification<Reunion> spec = Specification.where(specifications)
+                .and(ReunionSpecifications.hasDacId(dacId))
+                .and(ReunionSpecifications.deleted(false))
+                .and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+
+        if (comId != null) {
+            if (!isAdminCentral && !isSuperAdmin) {
+                List<Integer> comIds = userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream().map(UserCom::getComId).collect(Collectors.toList());
+                if (!comIds.contains(comId)) {
+                    throw new AuthorizationDeniedException("");
+                }
+            }
+            spec = spec.and(ReunionSpecifications.comId(comId));
+        }
+
+        return findAll(spec);
+    }
+
+    @Override
+    public List<Reunion> findAllByDacIdList(Integer dacId, Specification<Reunion> specifications) {
+        boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
+        boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
+
+        List<Reunion> reunionList=new ArrayList<>();
+        if(isAdminCentral||isSuperAdmin) {
+            reunionList = findAllByDacIdListForAdminCentralAndSuperAdmin(dacId,specifications);}
+        else{
+            String userId = Authentication.getCurrentUserId().orElseThrow(()->new UserIdRequiredException(""));
+
+            reunionList=findAllByPpmIdListForUserCom(dacId,userId,specifications);
+
+        }
+        return reunionList;    }
+
+    @Override
     public Optional<Reunion> findOneReunion(Specification<Reunion> specifications) {
         return repository.findOne(specifications);
     }
+
+    @Override
+    public List<Reunion> findAllByDacIdListForAdminCentralAndSuperAdmin(Integer ppmId, Specification<Reunion> specifications) {
+        Specification<Reunion> spec= Specification.where(specifications).and(ReunionSpecifications.hasDacId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER)));
+        return repository.findAll(spec);    }
+
+    @Override
+    public List<Reunion> findAllByDacIdListForUserCom(Integer dacId, String userId, Specification<Reunion> specifications) {
+        List<Integer> comIds=userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream().map(UserCom::getComId).collect(Collectors.toList());
+
+        Specification<Reunion> spec= Specification.where(specifications).and(ReunionSpecifications.hasDacId(dacId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER)));
+        return repository.findAll(spec)
+                .stream()
+                .filter(reunion ->
+                        comIds.contains(reunion.getCom().getId()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndDacId(Integer reunionId, Integer dacId) {
+        boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
+        boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
+        ReunionWithParticipantsAndPvDto dto =new ReunionWithParticipantsAndPvDto();
+        if(isAdminCentral||isSuperAdmin) {
+            dto = particpantHistoryByReunionIdAndDacIdForAdminCentralAndSuperAdmin(reunionId, dacId);
+        }
+        else {
+            String userId = Authentication.getCurrentUserId().orElseThrow(()->new UserIdRequiredException(""));
+            dto =particpantHistoryByReunionIdAndDacIdForUserCom(reunionId,dacId,userId);
+        }
+        return dto;    }
+
+    @Override
+    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndDacIdForAdminCentralAndSuperAdmin(Integer reunionId, Integer dacId) {
+        Specification<Reunion> spec= ReunionSpecifications.hasDacId(dacId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.id(reunionId)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+        Reunion reunion= repository.findOne(spec).orElseThrow(()->new ReunionNotFound("",reunionId));
+        ReunionWithParticipantsAndPvDto dto=  ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
+        if (reunion.getProcessVerbal() != null && dto.getProcessVerbal() != null) {
+            DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
+
+            dto.getProcessVerbal().setDocument(
+                    pvDocDto != null
+                            ? new ProcessVerbalReunionDocResponse(
+                            dto.getProcessVerbal().getId(),
+                            pvDocDto.getId(),
+                            pvDocDto,
+                            true
+                    )
+                            : null
+            );
+        }
+        UserDTO createdUser=keycloakAdminService.getUserById(reunion.getCreatedBy());
+        UserDTO updatedUser=keycloakAdminService.getUserById(reunion.getUpdatedBy());
+        dto.setCreatedBy(createdUser.getFirstName()+" "+createdUser.getLastName());
+        dto.setUpdatedBy(updatedUser.getFirstName()+" "+updatedUser.getLastName());
+        dto.setComType(reunion.getCom().getComType().getCode());
+        return dto;    }
+
+    @Override
+    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndDacIdForUserCom(Integer reunionId, Integer dacId, String userId) {
+        List<Integer> comIds=userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream().map(UserCom::getComId).collect(Collectors.toList());
+
+        Specification<Reunion> spec= ReunionSpecifications.hasDacId(dacId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.id(reunionId)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+        Reunion reunion= repository.findOne(spec).orElseThrow(()->new ReunionNotFound("",reunionId));
+        if(!comIds.contains(reunion.getCom().getId())) {
+            throw new AuthorizationDeniedException("");
+        }
+        ReunionWithParticipantsAndPvDto dto=  ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
+        if (reunion.getProcessVerbal() != null && dto.getProcessVerbal() != null) {
+            DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
+
+            dto.getProcessVerbal().setDocument(
+                    pvDocDto != null
+                            ? new ProcessVerbalReunionDocResponse(
+                            dto.getProcessVerbal().getId(),
+                            pvDocDto.getId(),
+                            pvDocDto,
+                            true
+                    )
+                            : null
+            );
+        }
+        UserDTO createdUser=keycloakAdminService.getUserById(reunion.getCreatedBy());
+        UserDTO updatedUser=keycloakAdminService.getUserById(reunion.getUpdatedBy());
+        dto.setCreatedBy(createdUser.getFirstName()+" "+createdUser.getLastName());
+        dto.setUpdatedBy(updatedUser.getFirstName()+" "+updatedUser.getLastName());
+        return dto;    }
 
 
 }

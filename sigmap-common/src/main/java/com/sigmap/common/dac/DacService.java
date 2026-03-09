@@ -9,9 +9,9 @@ import com.sigmap.common.dac.request.CreateDacFromAoRequest;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
-import com.sigmap.common.dac.response.DacWebsiteResponse;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.reunion.response.ExtraitResponse;
@@ -89,5 +89,7 @@ public interface DacService {
      ReunionArgumentDocuments listDocDac(List<Integer> comIds, Integer dacId, Integer dacVersion) ;
      PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion);
     ExtraitResponse findAllExtraits(List<Integer> acIds, Integer dacId, Integer DacVersion) ;
-
+     List<Dac> findAllDacs(Specification<Dac> spec);
+    List<Dac> findAllForSuperAdminAndAdminCentral(Specification<Dac> spec);
+    List<Dac> findAllForComUser(Specification<Dac> spec, String userId);
 }

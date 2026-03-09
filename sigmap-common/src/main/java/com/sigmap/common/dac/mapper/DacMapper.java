@@ -4,10 +4,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.response.AcWebsiteResponse;
 import com.sigmap.common.dac.Dac;
-import com.sigmap.common.dac.response.DacIdVerRefResponseDto;
-import com.sigmap.common.dac.response.DacResponce;
-import com.sigmap.common.dac.response.DacResponseReunion;
-import com.sigmap.common.dac.response.DacWebsiteResponse;
+import com.sigmap.common.dac.response.*;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -51,6 +48,8 @@ public interface DacMapper {
 
 
     DacIdVerRefResponseDto mapToDacIdVerRefResponseDto(Dac source);
+
+    DacDropListResponse mapToDacDropListResponse(Dac source);
 
 }
 

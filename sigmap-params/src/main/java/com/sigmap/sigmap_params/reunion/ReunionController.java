@@ -543,7 +543,61 @@ public class ReunionController {
         return ResponseEntity.ok(page);
     }
 
+    @GetMapping("/history/pageable/dac/{dacId}")
+    public ResponseEntity<Page<ReunionSearchResponseDto>> findAllByDacIdAndOptionalComId(Pageable pageable,ReunionQuery query, @PathVariable Integer dacId, @RequestParam(required = false) Integer comId) {
+        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
+        List<Reunion> reunionList = reunionService.findAllByDacIdAndOptionalComId(dacId,comId,query.toSpecification());
 
+        List<ReunionSearchResponseDto> dtoList = reunionList.stream()
+                .map(ReunionMapper.INSTANCE::mapToReunionSearchResponseDto)
+                .peek(dto -> {
+                    reunionList.stream()
+                            .filter(re -> re.getId().equals(dto.getId()))
+                            .findFirst()
+                            .flatMap(re -> re.getReunionDacs().stream()
+                                    .filter(dac -> dac.getDacId().equals(dacId))
+                                    .findFirst()
+                            )
+                            .ifPresent(ppm -> dto.setDecision(ppm.getDecision()));
+                })
+                .collect(Collectors.toList());
+
+
+        dtoList = applySorting(dtoList, pageable, ReunionSearchResponseDto.class);
+
+        Page<ReunionSearchResponseDto> page = paginate(dtoList, pageable);
+
+        return ResponseEntity.ok(page);
+    }
+
+    @GetMapping("/history/drop-list-com/dac/{dacId}")
+    public ResponseEntity<List<ComSelectResponseDto>> findAllComDropListByDacId(@PathVariable Integer dacId,ReunionQuery query) {
+
+        List<Com> reunionList =
+                reunionService.findAllByDacIdList(dacId, query.toSpecification())
+                        .stream()
+                        .map(r -> r.getCom())
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toMap(
+                                Com::getId,
+                                com -> com,
+                                (existing, replacement) -> existing
+                        ))
+                        .values()
+                        .stream()
+                        .collect(Collectors.toList());
+        return ResponseEntity.ok(reunionList.stream().map(ComMapper.INSTANCE::mapToSelectDto).collect(Collectors.toList()));
+    }
+
+
+    @GetMapping("/history/{reunionId}/dac/{dacId}")
+    public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndDacId(@PathVariable Integer reunionId, @PathVariable Integer dacId) {
+        ReunionWithParticipantsAndPvDto reunionWithParticipantsAndPvDto=reunionService.particpantHistoryByReunionIdAndDacId(reunionId, dacId);
+        reunionWithParticipantsAndPvDto.setExtraits(mapExtraits(reunionService.findById(reunionId)));
+
+
+        return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
+    }
 // global function for paginated a list
     public static <T> Page<T> paginate(List<T> list, Pageable pageable) {
 
