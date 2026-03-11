@@ -175,6 +175,7 @@ public class PpmFlowableService {
         properties.put("isPublishable", false);
         properties.put("commissionRequired", false);
         properties.put("meetingRequired", false);
+        properties.put("assignRapporteur", false);
 
         try {
             String processDefinitionId = task.getProcessDefinitionId();
@@ -201,6 +202,10 @@ public class PpmFlowableService {
                             properties.put("meetingRequired",
                                     Boolean.parseBoolean(formProperty.getDefaultExpression()));
                         }
+                        if ("assignRapporteur".equals(formProperty.getId())) {
+                            properties.put("assignRapporteur",
+                                    Boolean.parseBoolean(formProperty.getDefaultExpression()));
+                        }
                     }
                 }
             }
@@ -210,6 +215,19 @@ public class PpmFlowableService {
 
         log.info("Returning task properties for task [{}]: {}", task.getId(), properties);
         return properties;
+    }
+
+    private String resolveValidateProcessVariable(String candidateGroup) {
+        if (candidateGroup == null) {
+            return "valide";
+        }
+
+        return switch (candidateGroup) {
+            case "CPMP-FILTRATION" -> "cpmpFiltrageValide";
+            case "CNCMP-SPE-AFFECTATION" -> "specializedAffectationValide";
+            case "CNCMP-FILTRATION" -> "cncmpFiltrageValide";
+            default -> candidateGroup.toLowerCase() + "_valide";
+        };
     }
 
     /* ======================= start process ======================= */
@@ -633,13 +651,14 @@ public class PpmFlowableService {
         Boolean isPublishable = taskProperties.get("isPublishable");
         Boolean commissionRequired = taskProperties.get("commissionRequired");
         Boolean meetingRequired = taskProperties.get("meetingRequired");
+        Boolean assignRapporteur = taskProperties.get("assignRapporteur");
 
         boolean fromMeeting = Boolean.TRUE.equals(request.getFromMeeting());
 
         log.info(
-                "approve-path: currentTask [{}:{}] isUpdatable={}, meetingRequired={}, commissionRequired={}, publishable={}, fromMeeting={}",
+                "approve-path: currentTask [{}:{}] isUpdatable={}, meetingRequired={}, commissionRequired={}, assignRapporteur={}, publishable={}, fromMeeting={}",
                 task.getTaskDefinitionKey(), task.getName(), isUpdatable, meetingRequired, commissionRequired,
-                isPublishable, fromMeeting);
+                assignRapporteur, isPublishable, fromMeeting);
 
         // --- meetingRequired enforcement ---
         if (Boolean.TRUE.equals(meetingRequired)) {
@@ -720,7 +739,6 @@ public class PpmFlowableService {
                         runtimeService.setVariable(pid, "version", updatedPpm.getVersion());
                         log.info("RECTIF DRAFT: created draft version={} for pid={}", updatedPpm.getVersion(), pid);
                     } else {
-                        // No changes => no bump => keep rectifDraftVersion null so next real change can bump
                         runtimeService.setVariable(pid, "version", version);
                         log.info("RECTIF DRAFT: no changes detected => no version bump, keep rectifDraftVersion NULL (pid={})", pid);
                     }
@@ -750,7 +768,6 @@ public class PpmFlowableService {
                     log.info("RECTIF DRAFT: updated in place draft version={} for pid={}", rectifDraftVersion, pid);
                 }
 
-                // Traceability vars (optional, but nice to keep)
                 varsToSet.put("comment", request.getComment() != null ? request.getComment() : "");
                 varsToSet.put("dateComment", LocalDateTime.now());
                 varsToSet.put("treater", jwtAuth.getName());
@@ -758,10 +775,8 @@ public class PpmFlowableService {
                     varsToSet.put("isPublishable", true);
                 }
 
-                // Persist vars (runtime)
                 runtimeService.setVariables(pid, varsToSet);
 
-                // Ensure PPM saved
                 ppmService.save(latestPpm);
 
                 try {
@@ -918,14 +933,12 @@ public class PpmFlowableService {
                 nextUserTask != null ? nextUserTask.getId() : "null", nextMeetingRequired, nextCommissionRequired);
 
         boolean skipComAssociationCheck = false;
-
-        // We'll remember a deferred com to apply AFTER completing this task (e.g., CPMP
-        // → PER)
         Integer deferComIdAfterCompletion = null;
 
         // --- Dynamic COM wiring (approve path) ---
         if (Boolean.TRUE.equals(request.getValidate())) {
             log.info("Inspecting request for task [{}]: {}", taskId, request.getValidate());
+
             // AC validation (no meeting) → next meeting=true ⇒ set CPMP of AC
             if (!Boolean.TRUE.equals(meetingRequired) && Boolean.TRUE.equals(nextMeetingRequired)) {
 
@@ -987,7 +1000,6 @@ public class PpmFlowableService {
                 if (currentComs.stream().noneMatch(c -> c.getId().equals(cncmpPer.getId())))
                     currentComs.add(cncmpPer);
 
-                // Remember to switch to PER AFTER this CPMP task completes
                 deferComIdAfterCompletion = cncmpPer.getId();
                 varsToSet.put("cncmpPerComId", cncmpPer.getId());
                 log.info("CPMP→CNCMPP: defer switch to PER comId {} after completion", cncmpPer.getId());
@@ -1096,8 +1108,51 @@ public class PpmFlowableService {
             }
         }
 
+        // --- Specialized rapporteur assignment task ---
+        if (Boolean.TRUE.equals(assignRapporteur)) {
+            Integer currentComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
+            if (currentComId == null) {
+                throw new MissingComIdException(
+                        "comId is required in process variables for rapporteur assignment task");
+            }
+
+            List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+            if (userComIds == null || !userComIds.contains(currentComId)) {
+                throw new UserNotAssociatedWithComException(
+                        "User is not associated with the commission ID: " + currentComId);
+            }
+
+            varsToSet.put("comId", currentComId);
+
+            if (Boolean.TRUE.equals(request.getValidate())) {
+                if (request.getAssigneeUserId() == null || request.getAssigneeUserId().isBlank()) {
+                    TaskDTO errorResponse = new TaskDTO();
+                    errorResponse.setStatus(
+                            "assigneeUserId is required when validating rapporteur assignment task");
+                    return errorResponse;
+                }
+
+                boolean validRapporteur = keycloakAdminService.userHasCommissionAndRole(
+                        request.getAssigneeUserId(),
+                        currentComId,
+                        "CNCMP-SPE-RAPPORTEUR"
+                );
+
+                if (!validRapporteur) {
+                    TaskDTO errorResponse = new TaskDTO();
+                    errorResponse.setStatus(
+                            "Selected user must belong to the current commission and have role CNCMP-SPE-RAPPORTEUR");
+                    return errorResponse;
+                }
+            }
+
+            skipComAssociationCheck = true;
+        }
+
         // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId required ---
-        if (Boolean.TRUE.equals(commissionRequired) && !Boolean.TRUE.equals(meetingRequired)) {
+        if (Boolean.TRUE.equals(commissionRequired)
+                && !Boolean.TRUE.equals(meetingRequired)
+                && !Boolean.TRUE.equals(assignRapporteur)) {
             Integer reqComId = request.getComId();
             if (reqComId == null) {
                 throw new MissingComIdException(
@@ -1117,7 +1172,7 @@ public class PpmFlowableService {
                         return l;
                     });
             if (currentComs.stream().noneMatch(c -> c.getId().equals(reqComId))) {
-                currentComs.add(com); // SCS chosen
+                currentComs.add(com);
                 log.info("Affectation: Added comId {} to PPM", reqComId);
             }
 
@@ -1266,7 +1321,7 @@ public class PpmFlowableService {
             latestPpm = updatedPpm;
         }
 
-        // === SAFETY CASE #1 === (after status update, re-ensure CPMP/PER/SCS are associated)
+        // === SAFETY CASE #1 ===
         try {
             String pid = task.getProcessInstanceId();
 
@@ -1311,7 +1366,7 @@ public class PpmFlowableService {
         }
 
         // --- Determine gateway variable name & whether next is EndEvent ---
-        String processVariable = candidateGroup.toLowerCase() + "_valide";
+        String processVariable = resolveValidateProcessVariable(candidateGroup);
         boolean nextTaskIsLast = false;
         try {
             BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
@@ -1399,7 +1454,7 @@ public class PpmFlowableService {
             taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
         }
 
-        // Snapshot current comId (e.g., SCS after Affectation)
+        // Snapshot current comId
         Integer comIdSnapshot = null;
         try {
             comIdSnapshot = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
@@ -1478,7 +1533,7 @@ public class PpmFlowableService {
             }
         }
 
-        // === SAFETY CASE #2 === (right before completing: keep CPMP associated)
+        // === SAFETY CASE #2 ===
         try {
             String pid = task.getProcessInstanceId();
             Integer acIdForCpmp = (Integer) runtimeService.getVariable(pid, "acId");
@@ -1522,6 +1577,10 @@ public class PpmFlowableService {
         // Complete task
         taskService.complete(taskId, varsToSet);
 
+        if (Boolean.TRUE.equals(assignRapporteur) && Boolean.TRUE.equals(request.getValidate())) {
+            assignNextTaskToUser(task.getProcessInstanceId(), request.getAssigneeUserId());
+        }
+
         updatePpmEtapeProcess(processInstanceId, ppmId, ppmVer);
 
         try {
@@ -1532,7 +1591,6 @@ public class PpmFlowableService {
             runtimeService.removeVariable(processInstanceId, "rectifDraftTaskId");
         } catch (Exception ignore) {
         }
-        // ---------------------------------------------------------------------------
 
         // --- Response ---
         TaskDTO response = new TaskDTO();
@@ -1553,6 +1611,31 @@ public class PpmFlowableService {
         }
         response.setStatus("Task validated successfully");
         return response;
+    }
+
+    private void assignNextTaskToUser(String processInstanceId, String assigneeUserId) {
+        if (assigneeUserId == null || assigneeUserId.isBlank()) {
+            return;
+        }
+
+        List<Task> nextTasks = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .active()
+                .list();
+
+        if (nextTasks == null || nextTasks.isEmpty()) {
+            log.warn("No next active task found for processInstanceId={}", processInstanceId);
+            return;
+        }
+
+        if (nextTasks.size() > 1) {
+            log.warn("Multiple active tasks found for processInstanceId={}, assigning first one", processInstanceId);
+        }
+
+        Task nextTask = nextTasks.get(0);
+        taskService.setAssignee(nextTask.getId(), assigneeUserId);
+        log.info("Assigned next task [{}:{}] to user {}",
+                nextTask.getTaskDefinitionKey(), nextTask.getId(), assigneeUserId);
     }
 
 
