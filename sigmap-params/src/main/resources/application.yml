@@ -27,6 +27,10 @@ spring:
       idle-timeout: 30000
       max-lifetime: 1800000
       connection-timeout: 30000
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE_DEFAULT:1GB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE_DEFAULT:2GB}
 
   jpa:
     show-sql: true
@@ -98,10 +102,19 @@ alfresco:
   username: ${ALFRESCO_USERNAME:admin}
   password: ${ALFRESCO_PASSWORD:admin}
 
+max-file-size: ${UPLOAD_MAX_FILE_SIZE:31457280}
+max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:31457280}
+
 file:
   upload:
     parent-path: ${FILE_UPLOAD_PARENT:C:\\uploads}
     user-profile-path: ${FILE_UPLOAD_USER_PROFILE:${file.upload.parent-path}\\users}
     ac-logo-path: ${FILE_UPLOAD_AC_LOGO:${file.upload.parent-path}\\acs}
+
+templateDac:
+  dac:
+    inputDocPath: ${INPUT_DAC_PATH:C:\\word\\templates\\}
+    outputDocPath: ${OUTPUT_DAC_PATH:C:\\word\\temp\\}
+    inputModifiedDocPath: ${INPUT_MODIFIED_DAC_PATH:C:\\word\\modified\\}
 
 

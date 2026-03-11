@@ -1,0 +1,52 @@
+package com.sigmap.sigmap_dac.DynaDocsCopy;
+
+import com.sigmap.common.dyna_docs_copy.DynaDocsCopy;
+import com.sigmap.common.dyna_docs_copy.DynaDocsCopyService;
+import com.sigmap.common.docs.exeptions.ErrorResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+
+
+@RestController
+@RequestMapping("/api/dyna-docs-copy")
+@Slf4j
+@Tag(name = "cloned Dyna Docs For DAC", description = "upload modified dyna docs for DAC document by User")
+@AllArgsConstructor
+public class DynaDocsCopyController {
+
+    private final DynaDocsCopyService dynaDocsCopyService;
+
+    @GetMapping("/active-last-version")
+    public ResponseEntity<List<DynaDocsCopy>> getActiveLastVersion( @RequestParam Integer dacId, @RequestParam Integer dacVer ) {
+        return ResponseEntity.ok(dynaDocsCopyService.findActiveLastVersion(dacId, dacVer)
+        );
+    }
+
+    @PostMapping(value = "/upload-modified/{id}")
+    public ResponseEntity<ErrorResponse> uploadModifiedFile(@PathVariable Integer id, @RequestParam MultipartFile file) {
+        dynaDocsCopyService.uploadModifiedFiles(id, file);
+        ErrorResponse response = new ErrorResponse(200, "File updated successfully");
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping(value = "/download-modified/{id}")
+    public ResponseEntity<byte[]> downloadModifiedFile(@PathVariable Integer id) {
+        byte[] fileBytes = dynaDocsCopyService.downloadModifiedFile(id);
+        DynaDocsCopy copy = dynaDocsCopyService.findById(id);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDispositionFormData("attachment", copy.getTemplateFileName());
+
+        return new ResponseEntity<>(fileBytes, headers, HttpStatus.OK);
+    }
+}

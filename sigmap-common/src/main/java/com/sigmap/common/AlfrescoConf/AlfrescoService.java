@@ -709,28 +709,29 @@ public class AlfrescoService {
      * @return DocumentResponseDTO contenant le fichier ou l'erreur
      */
     public DocumentResponseDTO getDocumentById(String alfrescoId) {
+
         DocumentResponseDTO responseDTO = new DocumentResponseDTO();
 
         try {
-            // Vérification de l'ID reçu
+            log.info("Downloading document from Alfresco. ID={}", alfrescoId);
+
             String[] parts = alfrescoId.split(";");
             if (parts.length != 2) {
-                throw new IllegalArgumentException("L'ID de document est invalide. Il doit contenir à la fois un ID et une version.");
+                throw new IllegalArgumentException("Invalid Alfresco ID format");
             }
 
             String nodeId = parts[0];
             String version = parts[1];
 
-            // Construction de l'URL pour récupérer les versions
             String url = alfrescoUrl + "/api/-default-/public/alfresco/versions/1/nodes/"
                     + nodeId + "/versions?alf_ticket=" + tokenHolder.getTicket();
 
-            // Préparation des headers
             HttpHeaders headers = new HttpHeaders();
             headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            // Appel pour récupérer les versions du document
+            log.debug("Calling Alfresco versions API: {}", url);
+
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
@@ -738,7 +739,8 @@ public class AlfrescoService {
                     String.class
             );
 
-            // Parsing de la réponse JSON
+            log.debug("Versions API response status: {}", response.getStatusCode());
+
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode root = objectMapper.readTree(response.getBody());
 
@@ -755,30 +757,58 @@ public class AlfrescoService {
                 }
             }
 
-            // Vérification si la version demandée existe
             if (versionId == null) {
-                throw new IllegalArgumentException("La version " + version + " du document " + nodeId + " n'existe pas.");
+                log.error("Version not found. nodeId={}, version={}", nodeId, version);
+                throw new IllegalArgumentException("Version not found");
             }
 
-            // Construction de l'URL pour télécharger le fichier
             String contentUrl = alfrescoUrl + "/api/-default-/public/alfresco/versions/1/nodes/"
                     + nodeId + "/versions/" + versionId + "/content?alf_ticket=" + tokenHolder.getTicket();
 
-            // Téléchargement du fichier
-            ResponseEntity<byte[]> contentResponse = restTemplate.exchange(
-                    contentUrl,
-                    HttpMethod.GET,
-                    entity,
-                    byte[].class
-            );
+            log.debug("Downloading content from: {}", contentUrl);
 
-            // Retourner la réponse sans erreur
-            responseDTO.setFile(contentResponse.getBody());
+            ResponseEntity<byte[]> contentResponse;
+
+            try {
+                contentResponse = restTemplate.exchange(
+                        contentUrl,
+                        HttpMethod.GET,
+                        entity,
+                        byte[].class
+                );
+            } catch (HttpClientErrorException.Unauthorized e) {
+                log.warn("Alfresco ticket expired (401). Retrying with new ticket...");
+
+                tokenHolder.invalidateTicket(); // invalide proprement le ticket
+                tokenHolder.getTicket();        // renouvellement via le mécanisme centralisé
+
+                contentResponse = restTemplate.exchange(
+                        contentUrl,
+                        HttpMethod.GET,
+                        entity,
+                        byte[].class
+                );
+            }
+
+            log.debug("Content API response status: {}", contentResponse.getStatusCode());
+
+            byte[] body = contentResponse.getBody();
+
+            if (body == null || body.length == 0) {
+                log.error("Empty file received from Alfresco. nodeId={}, version={}", nodeId, version);
+                throw new RuntimeException("Empty file");
+            }
+
+            responseDTO.setFile(body);
             responseDTO.setErreur(false);
             responseDTO.setMsg("");
 
+            log.info("Document downloaded successfully. Size={} bytes", body.length);
+
         } catch (Exception e) {
-            // En cas d'erreur, capturer l'exception
+
+            log.error("Error while downloading document from Alfresco. ID={}", alfrescoId, e);
+
             responseDTO.setErreur(true);
             responseDTO.setMsg(e.getMessage());
             responseDTO.setFile(null);

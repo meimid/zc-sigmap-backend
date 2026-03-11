@@ -14,7 +14,9 @@ import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.reunion.response.ExtraitResponse;
 import com.sigmap.common.reunion.response.PvResponse;
+import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,9 +32,9 @@ public interface DacService {
     public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer);
     Dac save(Dac dac);
     Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound, NoActiveAAOException;
-    List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion , String basePath, String customDirPath) ;
+    List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion , String inputModifiedDocPath, String customDirPath) ;
 
-    String generateDocumentWithBookmarks(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer, String basePath, String customDirPath);
+    String generateDocumentWithBookmarks(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer, String inputModifiedDocPath, String customDirPath);
 
     /**
      * Create a new DAC version synchronized to the latest active DynaDocs (and their fields) for the DAC's category.
@@ -50,7 +52,7 @@ public interface DacService {
     Dac updateStatus(Integer dacId, Integer dacVer, ProcessStatus status) throws DacNotFound;
     Integer findLatestVersionById(Integer ppmId);
 
-    String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath);
+    String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String inputModifiedDocPath, String customDirPath);
 
     /**
      * Find all published DACs for a given realisation ID and version
@@ -84,5 +86,8 @@ public interface DacService {
     DacWithAoReferenceResponse getDacWithAoReference(Integer dacId, Integer dacVer) 
             throws DacNotFound;
 
-    PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion);
+     ReunionArgumentDocuments listDocDac(List<Integer> comIds, Integer dacId, Integer dacVersion) ;
+     PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion);
+    ExtraitResponse findAllExtraits(List<Integer> acIds, Integer dacId, Integer DacVersion) ;
+
 }

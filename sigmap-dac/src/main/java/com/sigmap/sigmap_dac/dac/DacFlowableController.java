@@ -8,6 +8,7 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.model_dac.ModelDacService;
 import com.sigmap.common.model_dac.exceptions.DacModelShouldExiste;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
@@ -56,15 +57,17 @@ public class DacFlowableController {
     private final DocumentCommuneService documentCommuneService;
     private final TaskService taskService;
     private final RuntimeService runtimeService;
+    private final CurrentUserService currentUserService;
 
 
-    public DacFlowableController(ReunionService reunionService, ObjectMapper objectMapper, ModelDacService modelDacService, DocumentCommuneService documentCommuneService, TaskService taskService, RuntimeService runtimeService) {
+    public DacFlowableController(ReunionService reunionService, ObjectMapper objectMapper, ModelDacService modelDacService, DocumentCommuneService documentCommuneService, TaskService taskService, RuntimeService runtimeService, CurrentUserService currentUserService) {
         this.reunionService = reunionService;
         this.objectMapper = objectMapper;
         this.modelDacService = modelDacService;
         this.documentCommuneService = documentCommuneService;
         this.taskService = taskService;
         this.runtimeService = runtimeService;
+        this.currentUserService = currentUserService;
     }
 
     /**
