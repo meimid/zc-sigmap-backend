@@ -107,7 +107,6 @@
               flowable:formFieldValidation="true">
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false" />
-        <flowable:formProperty id="commissionRequired" name="commissionRequired" type="boolean" default="true" />
         <flowable:formProperty id="assignRapporteur" name="assignRapporteur" type="boolean" default="true" />
       </extensionElements>
       <incoming>Flow_0v9oe7b</incoming>
@@ -148,6 +147,7 @@
               flowable:formFieldValidation="true">
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false" />
+        <flowable:formProperty id="switchBackToPerAfterCompletion" name="switchBackToPerAfterCompletion" type="boolean" default="true"/>
       </extensionElements>
       <incoming>Flow_0mjltft</incoming>
       <outgoing>Flow_0o50yid</outgoing>
