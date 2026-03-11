@@ -13,4 +13,6 @@ public class ValidationRequest {
     private Integer comId;
     private Boolean fromMeeting;
     private String assigneeUserId;
+    private String avis;
+    private Integer docIdNote;
 }

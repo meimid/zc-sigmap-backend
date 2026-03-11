@@ -15,6 +15,7 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.ppm_avis_note_rapporteur.PpmAvisNoteRapporteurService;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.PpmService;
@@ -105,6 +106,8 @@ public class PpmFlowableService {
     private PpmRepository ppmRepository;
     @Autowired
     private ReunionPpmRepository reunionPpmRepository;
+    @Autowired
+    private PpmAvisNoteRapporteurService ppmAvisNoteRapporteurService;
 
     /* ======================= small helpers ======================= */
 
@@ -1168,8 +1171,7 @@ public class PpmFlowableService {
                 boolean validRapporteur = keycloakAdminService.userHasCommissionAndRole(
                         request.getAssigneeUserId(),
                         currentComId,
-                        "CNCMP-SPE-RAPPORTEUR"
-                );
+                        "CNCMP-SPE-RAPPORTEUR");
 
                 if (!validRapporteur) {
                     TaskDTO errorResponse = new TaskDTO();
@@ -1647,6 +1649,35 @@ public class PpmFlowableService {
         Integer ppmId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer ppmVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
 
+        // ==========================================================
+// SAVE AVIS + NOTE RAPPORTEUR (for specialized rapporteur task)
+// ==========================================================
+        try {
+            if (request.getAvis() != null || request.getDocIdNote() != null) {
+
+                ppmAvisNoteRapporteurService.saveOrUpdate(
+                        processInstanceId,
+                        taskId,
+                        ppmId,
+                        ppmVer,
+                        jwtAuth.getName(),
+                        request.getAvis(),
+                        request.getDocIdNote()
+                );
+
+                log.info(
+                        "Saved rapporteur avis/note: processInstanceId={}, taskId={}, ppmId={}, ppmVer={}, rapporteurUserId={}, noteDocId={}",
+                        processInstanceId,
+                        taskId,
+                        ppmId,
+                        ppmVer,
+                        jwtAuth.getName(),
+                        request.getDocIdNote()
+                );
+            }
+        } catch (Exception e) {
+            log.error("Failed to save rapporteur avis/note for task [{}]: {}", taskId, e.getMessage(), e);
+        }
         // Complete task
         taskService.complete(taskId, varsToSet);
 
