@@ -1,9 +1,6 @@
 -- liquibase formatted sql
 
 -- changeset sigmap:17496719590118-1
--- liquibase formatted sql
-
--- changeset sigmap:20260311-ppm-avis-note-rapporteur-1
 CREATE TABLE ppm_avis_note_rapporteur (
                                           id INT AUTO_INCREMENT PRIMARY KEY,
                                           process_instance_id VARCHAR(255) NOT NULL,
