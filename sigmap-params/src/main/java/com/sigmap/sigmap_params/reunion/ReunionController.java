@@ -335,11 +335,11 @@ public class ReunionController {
 
         Page<ProcessVerbalReunionExtraitRespons> result =
                 reunionService.findAllProcessVerbalReunionExtraitByReunionId(reunionId, pageable)
-                        .map(this::enrich);
+                        .map(this::mapExtrait);
 
         return ResponseEntity.ok(result);
     }
-    private ProcessVerbalReunionExtraitRespons enrich(ProcessVerbalReunionExtrait extrait) {
+    private ProcessVerbalReunionExtraitRespons mapExtrait(ProcessVerbalReunionExtrait extrait) {
         ProcessVerbalReunionExtraitRespons dto =
                 ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
         DossierDto dossierDto =new DossierDto();
