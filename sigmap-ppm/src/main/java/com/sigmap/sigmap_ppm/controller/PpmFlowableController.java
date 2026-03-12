@@ -285,14 +285,14 @@ public class PpmFlowableController {
      * @throws IOException if an error occurs during file processing
      * @throws ComNotFound if a commission is not found
      */
-    @PostMapping(consumes = { "multipart/form-data" }, value = "/tasks/validate-group")
+    @PostMapping(consumes = { "multipart/form-data" }, value = "/tasks/validate-group/{idReu}")
     public ResponseEntity<List<TaskDTO>> validateTaskGroup(
             @RequestParam("requestsJson") String requestsJson,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson
-           )
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @PathVariable Integer idReu)
             throws PpmNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
-//        Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
-
+        Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
+        if (present) {
             log.info("Validating group of tasks with requests JSON");
 
             // Deserialize requestsJson into List<GroupValidationRequest>
@@ -319,7 +319,9 @@ public class PpmFlowableController {
             }
             List<TaskDTO> response = ppmFlowableService.validateTaskGroup(requests);
             return ResponseEntity.ok(response);
-
+        } else {
+            throw new ParticipantPresenceConflict("");
+        }
     }
 
     @PostMapping(consumes = { "multipart/form-data" }, value = "/tasks/{taskId}/validate_avis_note_rapporteur")
