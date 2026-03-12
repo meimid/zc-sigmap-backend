@@ -27,6 +27,7 @@ import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationService;
 import com.sigmap.common.reunionPpm.ReunionPpmRepository;
 import com.sigmap.common.reunionPpm.ReunionPpmSpecifications;
+import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
@@ -108,6 +109,9 @@ public class PpmFlowableService {
     private ReunionPpmRepository reunionPpmRepository;
     @Autowired
     private PpmAvisNoteRapporteurService ppmAvisNoteRapporteurService;
+    @Autowired
+    private UserComRepository userComRepository;
+
 
     /* ======================= small helpers ======================= */
 
@@ -1146,13 +1150,16 @@ public class PpmFlowableService {
 
         // --- Specialized rapporteur assignment task ---
         if (Boolean.TRUE.equals(assignRapporteur)) {
+
             Integer currentComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
+
             if (currentComId == null) {
                 throw new MissingComIdException(
                         "comId is required in process variables for rapporteur assignment task");
             }
 
             List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+
             if (userComIds == null || !userComIds.contains(currentComId)) {
                 throw new UserNotAssociatedWithComException(
                         "User is not associated with the commission ID: " + currentComId);
@@ -1161,6 +1168,7 @@ public class PpmFlowableService {
             varsToSet.put("comId", currentComId);
 
             if (Boolean.TRUE.equals(request.getValidate())) {
+
                 if (request.getAssigneeUserId() == null || request.getAssigneeUserId().isBlank()) {
                     TaskDTO errorResponse = new TaskDTO();
                     errorResponse.setStatus(
@@ -1168,15 +1176,16 @@ public class PpmFlowableService {
                     return errorResponse;
                 }
 
-                boolean validRapporteur = keycloakAdminService.userHasCommissionAndRole(
-                        request.getAssigneeUserId(),
-                        currentComId,
-                        "CNCMP-SPE-RAPPORTEUR");
+                boolean validRapporteur =
+                        userComRepository.existsByUserIdAndComIdAndIsDeletedFalse(
+                                request.getAssigneeUserId(),
+                                currentComId
+                        );
 
                 if (!validRapporteur) {
                     TaskDTO errorResponse = new TaskDTO();
                     errorResponse.setStatus(
-                            "Selected user must belong to the current commission and have role CNCMP-SPE-RAPPORTEUR");
+                            "Selected user must belong to the current commission");
                     return errorResponse;
                 }
             }
