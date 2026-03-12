@@ -585,70 +585,83 @@ public class DacServiceImpl implements DacService {
             return;
         }
 
-        // Parcourir tous les paragraphes pour trouver le marqueur
-        // Utiliser une copie de la liste pour éviter ConcurrentModificationException si
-        // on supprime des paragraphes
-        List<XWPFParagraph> paragraphs = new ArrayList<>(document.getParagraphs());
-        for (XWPFParagraph p : paragraphs) {
-            String text = p.getText();
-            String marker = "**" + tableName + "**";
+        // Loop until no more markers are found
+        while (true) {
+            boolean markerFound = false;
 
-            if (text != null && text.contains(marker)) {
-                log.debug("Marqueur de tableau trouvé: {}", marker);
+            // Parcourir tous les paragraphes pour trouver le marqueur
+            // Utiliser une copie de la liste pour éviter ConcurrentModificationException si
+            // on supprime des paragraphes
+            List<XWPFParagraph> paragraphs = new ArrayList<>(document.getParagraphs());
+            for (XWPFParagraph p : paragraphs) {
+                String text = p.getText();
+                String marker = "**" + tableName + "**";
 
-                try {
-                    // Obtenir la position du curseur au paragraphe actuel
-                    XmlCursor cursor = p.getCTP().newCursor();
+                if (text != null && text.contains(marker)) {
+                    log.debug("Marqueur de tableau trouvé: {}", marker);
 
-                    // Insérer le tableau à la position du curseur (juste avant le paragraphe)
-                    // Note: insertNewTbl insère le tableau à la position du curseur
-                    XWPFTable table = document.insertNewTbl(cursor);
+                    try {
+                        // Obtenir la position du curseur au paragraphe actuel
+                        XmlCursor cursor = p.getCTP().newCursor();
 
-                    // Ajouter les données
-                    if (!tableData.isEmpty()) {
-                        // Ajouter l'en-tête
-                        // XWPFTable vient avec une ligne par défaut
-                        XWPFTableRow headerRow = table.getRow(0);
-                        int colIndex = 0;
-
-                        // Utiliser les clés de la première ligne comme en-têtes
-                        Map<String, String> firstRow = tableData.get(0);
-                        for (String header : firstRow.keySet()) {
-                            if (colIndex > 0) {
-                                headerRow.createCell();
-                            }
-                            XWPFTableCell cell = headerRow.getCell(colIndex);
-                            setCellText(cell, header, true);
-                            colIndex++;
-                        }
+                        // Insérer le tableau à la position du curseur (juste avant le paragraphe)
+                        // Note: insertNewTbl insère le tableau à la position du curseur
+                        XWPFTable table = document.insertNewTbl(cursor);
 
                         // Ajouter les données
-                        for (int j = 1; j < tableData.size(); j++) {
-                            Map<String, String> rowData = tableData.get(j);
-                            XWPFTableRow dataRow = table.createRow();
-                            colIndex = 0;
-                            for (String value : rowData.values()) {
-                                dataRow.getCell(colIndex).setText(value != null ? value : "");
+                        if (!tableData.isEmpty()) {
+                            // Ajouter l'en-tête
+                            // XWPFTable vient avec une ligne par défaut
+                            XWPFTableRow headerRow = table.getRow(0);
+                            int colIndex = 0;
+
+                            // Utiliser les clés de la première ligne comme en-têtes
+                            Map<String, String> firstRow = tableData.get(0);
+                            for (String header : firstRow.keySet()) {
+                                if (colIndex > 0) {
+                                    headerRow.createCell();
+                                }
+                                XWPFTableCell cell = headerRow.getCell(colIndex);
+                                setCellText(cell, header, true);
                                 colIndex++;
                             }
+
+                            // Ajouter les données
+                            for (int j = 1; j < tableData.size(); j++) {
+                                Map<String, String> rowData = tableData.get(j);
+                                XWPFTableRow dataRow = table.createRow();
+                                colIndex = 0;
+                                for (String value : rowData.values()) {
+                                    dataRow.getCell(colIndex).setText(value != null ? value : "");
+                                    colIndex++;
+                                }
+                            }
                         }
+
+                        log.debug("Tableau '{}' inséré avec succès avec {} lignes", tableName, tableData.size());
+
+                        // Supprimer le paragraphe contenant le marqueur car il a été remplacé
+                        int pos = document.getPosOfParagraph(p);
+                        if (pos != -1) {
+                            document.removeBodyElement(pos);
+                        }
+
+                        markerFound = true;
+                        break; // Exit the inner loop to restart the search from the beginning
+
+                    } catch (Exception e) {
+                        log.error("Erreur lors de l'insertion du tableau '{}': {}", tableName, e.getMessage(), e);
                     }
-
-                    log.debug("Tableau '{}' inséré avec succès avec {} lignes", tableName, tableData.size());
-
-                    // Supprimer le paragraphe contenant le marqueur car il a été remplacé
-                    int pos = document.getPosOfParagraph(p);
-                    if (pos != -1) {
-                        document.removeBodyElement(pos);
-                    }
-
-                    return;
-
-                } catch (Exception e) {
-                    log.error("Erreur lors de l'insertion du tableau '{}': {}", tableName, e.getMessage(), e);
                 }
             }
+
+            // If no marker was found in this pass, exit the while loop
+            if (!markerFound) {
+                break;
+            }
         }
+
+        // This warn can be kept or removed since we now replace all
         log.warn("Aucun marqueur de tableau trouvé pour: {}", "**table:" + tableName + "**");
     }
 
@@ -682,37 +695,48 @@ public class DacServiceImpl implements DacService {
    private void replaceListPattern(XWPFDocument document, String listName, List<String> items) {
         if (items == null || items.isEmpty()) return;
         
-        // Parcourir tous les paragraphes du document
-        for (int i = 0; i < document.getParagraphs().size(); i++) {
-            XWPFParagraph p = document.getParagraphs().get(i);
-            String text = p.getText();
+        // Loop until no more markers are found
+        while (true) {
+            boolean markerFound = false;
+            
+            // Parcourir tous les paragraphes du document
+            for (int i = 0; i < document.getParagraphs().size(); i++) {
+                XWPFParagraph p = document.getParagraphs().get(i);
+                String text = p.getText();
 
-            if (text != null && text.contains("**list:" + listName + "**")) {
-                log.debug("Marqueur de liste trouvé: {}", text);
+                if (text != null && text.contains("**list:" + listName + "**")) {
+                    log.debug("Marqueur de liste trouvé: {}", text);
 
-                // Créer un curseur à la position du marqueur
-                XmlCursor cursor = p.getCTP().newCursor();
+                    // Créer un curseur à la position du marqueur
+                    XmlCursor cursor = p.getCTP().newCursor();
 
-                // Insérer chaque élément comme un nouveau paragraphe
-                for (String item : items) {
-                    if (item != null && !item.trim().isEmpty()) {
-                        // Créer un nouveau paragraphe à la position du curseur
-                        XWPFParagraph newPara = document.insertNewParagraph(cursor);
-                        newPara.setIndentationLeft(720);
-                        newPara.createRun().setText("- " + item.trim());
-                        
-                        // Déplacer le curseur après le paragraphe inséré
-                        cursor = newPara.getCTP().newCursor();
-                        cursor.toNextSibling();
+                    // Insérer chaque élément comme un nouveau paragraphe
+                    for (String item : items) {
+                        if (item != null && !item.trim().isEmpty()) {
+                            // Créer un nouveau paragraphe à la position du curseur
+                            XWPFParagraph newPara = document.insertNewParagraph(cursor);
+                            newPara.setIndentationLeft(720);
+                            newPara.createRun().setText("- " + item.trim());
+                            
+                            // Déplacer le curseur après le paragraphe inséré
+                            cursor = newPara.getCTP().newCursor();
+                            cursor.toNextSibling();
+                        }
                     }
-                }
 
-                // Supprimer le paragraphe du marqueur
-                int pos = document.getPosOfParagraph(p);
-                if (pos != -1) {
-                    document.removeBodyElement(pos);
+                    // Supprimer le paragraphe du marqueur
+                    int pos = document.getPosOfParagraph(p);
+                    if (pos != -1) {
+                        document.removeBodyElement(pos);
+                    }
+                    markerFound = true;
+                    break; // Exit the inner loop to restart the search from the beginning
                 }
-                return;
+            }
+            
+            // If no marker was found in this pass, exit the while loop
+            if (!markerFound) {
+                break;
             }
         }
    }
