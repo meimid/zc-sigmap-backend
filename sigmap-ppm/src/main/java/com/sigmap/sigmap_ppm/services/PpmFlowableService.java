@@ -1836,7 +1836,7 @@ public class PpmFlowableService {
                                         } else if ("REJECT".equalsIgnoreCase(rhs)) {
                                             nextStep.setActionLabel("Rejeter");
                                         } else if ("REJECT_END".equalsIgnoreCase(rhs)) {
-                                            nextStep.setActionLabel("Rejeter");
+                                            nextStep.setActionLabel("Rejet");
                                         } else if ("COND_APPROVE".equalsIgnoreCase(rhs)) {
                                             nextStep.setActionLabel("Approuver sous réserve");
                                         } else if ("REPORT".equalsIgnoreCase(rhs)) {
