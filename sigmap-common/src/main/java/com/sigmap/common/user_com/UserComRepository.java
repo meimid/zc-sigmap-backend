@@ -39,11 +39,5 @@ public interface UserComRepository extends JpaRepository<UserCom, UserComId>,
     @Query("SELECT uc FROM UserCom uc WHERE uc.comId = :comId AND uc.isDeleted = false AND uc.responsable = true")
     UserCom findResponsableByComId(@Param("comId") Integer comId);
 
-
-
-
-
-
-
-
+    boolean existsByUserIdAndComIdAndIsDeletedFalse(String userId, Integer comId);
 }

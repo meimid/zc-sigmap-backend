@@ -384,4 +384,10 @@ public class ComController {
             List<UserComSoftResponse> members = comService.getCpmpMembersByAc(dacId);
             return ResponseEntity.ok(members);
     }
+
+    @GetMapping("/com-members/{comId}")
+    public ResponseEntity<List<UserComSoftResponse>> getComMembers(@PathVariable Integer comId) {
+        List<UserComSoftResponse> members = comService.findAllComMemebersByComId(comId);
+        return ResponseEntity.ok(members);
+    }
 }

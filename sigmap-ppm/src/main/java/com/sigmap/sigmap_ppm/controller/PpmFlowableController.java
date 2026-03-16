@@ -324,6 +324,57 @@ public class PpmFlowableController {
         }
     }
 
+    @PostMapping(consumes = { "multipart/form-data" }, value = "/tasks/{taskId}/validate_avis_note_rapporteur")
+    public ResponseEntity<TaskDTO> validateAvisNoteRapporteur(
+            @PathVariable String taskId,
+            @ModelAttribute("request") ValidationRequest request,
+            @RequestPart(value = "noteFile", required = false) MultipartFile noteFile,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson)
+            throws IOException, PpmNotFound, AcNotFound, ComNotFound, DocNotFound {
+
+        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
+        if (task == null) {
+            throw new IllegalArgumentException("Task not found: " + taskId);
+        }
+
+        Map<String, Object> vars = runtimeService.getVariables(task.getProcessInstanceId());
+        Integer ppmId = (Integer) vars.get("id");
+        Integer ppmVer = (Integer) vars.get("version");
+        if (ppmId == null || ppmVer == null) {
+            throw new IllegalStateException("Process variables 'id' and 'version' are required on this task.");
+        }
+
+        if (noteFile != null && !noteFile.isEmpty()) {
+            String rootPath = Constants.PATH_ENTREPOT_GED_PPM;
+            Integer docIdNote = documentCommuneService.processAndSaveDocumentsForModelPpm(
+                    noteFile, ppmId, ppmVer, rootPath);
+
+            request.setDocIdNote(docIdNote);
+        }
+
+        if (realisationsLotsJson != null && !realisationsLotsJson.isBlank()) {
+            try {
+                processRealisationLotsFromJson(request.getPpm(), realisationsLotsJson);
+            } catch (Exception e) {
+                log.warn("Failed to parse lots JSON before validate: {}", e.getMessage());
+            }
+        }
+
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isBlank()) {
+            try {
+                processRealisationFinancementsFromJson(request.getPpm(), realisationsFinancementsJson);
+            } catch (Exception e) {
+                log.warn("Failed to parse financements JSON before validate: {}", e.getMessage());
+            }
+        }
+
+        request.setFromMeeting(false);
+        TaskDTO response = ppmFlowableService.validateTask(taskId, request);
+
+        return ResponseEntity.ok(response);
+    }
+
     private void processRealisationLotsFromJson(PpmBaseRequestDto request, String lotsJson) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();

@@ -707,4 +707,34 @@ public class ComServiceImpl implements ComService {
                 .filter(Objects::nonNull)
                 .toList();
     }
+
+    @Override
+    public List<UserComSoftResponse> findAllComMemebersByComId(Integer comId) {
+        List<UserCom> users= userComRepository.findAllByComIdAndIsDeletedFalse(comId);
+        if (users.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<String> userIds = users.stream()
+                .map(UserCom::getUserId)
+                .collect(Collectors.toSet());
+        Map<String, UserDTO> kcUsers =
+                keycloakAdminService.fetchUsersInBatch(userIds);
+        return users.stream()
+                .map(userCom -> {
+                    UserDTO userDTO = kcUsers.get(userCom.getUserId());
+                    if (userDTO == null) {
+                        return null;
+                    }
+                    return new UserComSoftResponse(
+                            userCom.getUserId(),
+                            userDTO.getLastName(),
+                            userDTO.getFirstName(),
+                            userDTO.getEmail(),
+                            userDTO.getMobile(),
+                            userDTO.getAddress()
+                    );
+                })
+                .filter(Objects::nonNull)
+                .toList();
+    }
 }

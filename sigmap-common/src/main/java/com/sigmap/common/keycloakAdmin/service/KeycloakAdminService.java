@@ -913,4 +913,58 @@ public class KeycloakAdminService {
 
         return historiques.map(h -> mapToUserComHitoriqueResponse(h, userMap.get(h.getUserId())));
     }
+
+    public boolean userHasCommissionAndRole(String userId, Integer comId, String roleName) {
+        if (userId == null || userId.isBlank() || comId == null || roleName == null || roleName.isBlank()) {
+            return false;
+        }
+
+        HttpEntity<Void> entity = createHttpEntityWithToken();
+
+        // 1) fetch user basic data from keycloak
+        String userUrl = keycloakBaseUrl + "/admin/realms/" + realm + "/users/" + userId;
+        ResponseEntity<Map> userResp;
+        try {
+            userResp = restTemplate.exchange(userUrl, HttpMethod.GET, entity, Map.class);
+            if (!userResp.getStatusCode().is2xxSuccessful() || userResp.getBody() == null) {
+                return false;
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to fetch user [{}]: {}", userId, e.getMessage());
+            return false;
+        }
+
+        // 2) check commission membership from DB association
+        boolean hasCom = userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
+                .anyMatch(uc -> Objects.equals(uc.getComId(), comId));
+
+        if (!hasCom) {
+            return false;
+        }
+
+        // 3) check technical role name from keycloak
+        String rolesUrl = String.format("%s/admin/realms/%s/users/%s/role-mappings/clients/%s",
+                keycloakBaseUrl, realm, userId, getClientUuid(commonClientId));
+
+        try {
+            ResponseEntity<List> rolesResp = restTemplate.exchange(rolesUrl, HttpMethod.GET, entity, List.class);
+            List<Map<String, Object>> roles = rolesResp.getBody();
+            if (roles == null) {
+                return false;
+            }
+
+            String defaultRoleName = "default-roles-" + realm;
+            Set<String> ignored = Set.of(defaultRoleName, "offline_access", "uma_authorization");
+
+            return roles.stream()
+                    .map(r -> (String) r.get("name"))
+                    .filter(Objects::nonNull)
+                    .filter(r -> !ignored.contains(r))
+                    .anyMatch(roleName::equals);
+
+        } catch (Exception e) {
+            logger.warn("Failed to fetch roles for user [{}]: {}", userId, e.getMessage());
+            return false;
+        }
+    }
 }
