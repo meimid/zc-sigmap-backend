@@ -5,6 +5,7 @@ import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
 import com.sigmap.common.dac_doc_soumission.response.DacDocSoumissionResponse;
 import com.sigmap.common.dac_dyna_form.response.DacDynaFormResponse;
 import com.sigmap.common.dac_prix.response.DacPrixResponce;
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
 import com.sigmap.common.entity.ProcessStatus;
 import lombok.Data;
@@ -37,12 +38,12 @@ public class DacResponseDTO {
     private String conditionsParticipation;
     private String responsableDacId;
     private List<DacModelsDTO> dacModels;
-    private List<String> pvCPMP=new ArrayList<>();
-    private List<String> pvCNCMPSpecialise=new ArrayList<>();
-    private List<String> pvCNCMPPermanente=new ArrayList<>();
-    private Set<String> documentCPMP=new HashSet<>();
-    private Set<String> documentCNCMPSpecialise=new HashSet<>();
-    private Set<String> documentCNCMPPermanente=new HashSet<>();
-    private List<String> extraitCPMP=new ArrayList<>();
-    private List<String> extraitCNCMPP=new ArrayList<>();
+    private List<ReunionDocResponse> pvCPMP=new ArrayList<>();
+    private List<ReunionDocResponse> pvCNCMPSpecialise=new ArrayList<>();
+    private List<ReunionDocResponse> pvCNCMPPermanente=new ArrayList<>();
+    private Set<ReunionDocResponse> documentCPMP=new HashSet<>();
+    private Set<ReunionDocResponse> documentCNCMPSpecialise=new HashSet<>();
+    private Set<ReunionDocResponse> documentCNCMPPermanente=new HashSet<>();
+    private List<ReunionDocResponse> extraitCPMP=new ArrayList<>();
+    private List<ReunionDocResponse> extraitCNCMPP=new ArrayList<>();
 }

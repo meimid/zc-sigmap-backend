@@ -1,5 +1,6 @@
 package com.sigmap.common.reunion.response;
 
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,8 +14,8 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PvResponse {
-    private List<String> pvCPMP=new ArrayList<>();
-    private List<String> pvCNCMPSpecialise=new ArrayList<>();
-    private List<String> pvCNCMPPermanente=new ArrayList<>();
+    private List<ReunionDocResponse> pvCPMP=new ArrayList<>();
+    private List<ReunionDocResponse> pvCNCMPSpecialise=new ArrayList<>();
+    private List<ReunionDocResponse> pvCNCMPPermanente=new ArrayList<>();
 
 }
