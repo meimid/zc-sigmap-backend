@@ -2489,9 +2489,11 @@ public class DacServiceImpl implements DacService {
             for (Reunion r : reunions) {
                 Calendar calendar = r.getReunionDate();
 
-                LocalDate localDate = calendar.toInstant()
-                        .atZone(ZoneId.of("Africa/Nouakchott"))
-                        .toLocalDate();
+                LocalDate localDate = LocalDate.of(
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH) + 1,
+                        calendar.get(Calendar.DAY_OF_MONTH)
+                );
 
                 String formattedDate = localDate.format(
                         DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
@@ -2572,7 +2574,6 @@ public class DacServiceImpl implements DacService {
 
     @Override
     public ExtraitResponse findAllExtraits(List<Integer> acIds, Integer dacId, Integer dacVer) {
-        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
         ExtraitResponse dto = new ExtraitResponse();
         Set<String> seenCpmp = new HashSet<>();
         Set<String> seenPermanent = new HashSet<>();
@@ -2585,6 +2586,7 @@ public class DacServiceImpl implements DacService {
 
             if (reunionOpt.isEmpty())
                 continue;
+            ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
 
             Reunion reunion = reunionOpt.get();
             Calendar calendar = reunion.getReunionDate();

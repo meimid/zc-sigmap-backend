@@ -410,7 +410,6 @@ public class PpmServiceImpl implements PpmService {
     public PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
 
         PvResponse dto = new PvResponse();
-        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
         Set<String> userComTypes = comService.findAll(
                         Specification.where(ComSpecifications.deleted(false))
                                 .and(ComSpecifications.idIn(comIds))
@@ -447,17 +446,21 @@ public class PpmServiceImpl implements PpmService {
             log.warn("Reunions found for COM {} = {}", comId, reunions.size());
 
             for (Reunion r : reunions) {
+                ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
 
                 Calendar calendar = r.getReunionDate();
 
-                LocalDate localDate = calendar.toInstant()
-                        .atZone(ZoneId.of("Africa/Nouakchott"))
-                        .toLocalDate();
+                LocalDate localDate = LocalDate.of(
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH) + 1,
+                        calendar.get(Calendar.DAY_OF_MONTH)
+                );
 
                 String formattedDate = localDate.format(
                         DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
                 );
                 String ref=r.getCom().getAbreviation()+" "+formattedDate;
+                log.info("ref={}",ref);
                 reunionDocResponse.setRef(ref);
 
                 String pvAlfrescoId = r.getProcessVerbal()
