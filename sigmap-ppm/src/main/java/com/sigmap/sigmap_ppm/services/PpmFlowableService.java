@@ -961,9 +961,9 @@ public class PpmFlowableService {
 
             Integer currentComIdForRouting = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
 
-            // AC validation (no meeting) → next meeting=true ⇒ set CPMP of AC
+            // AC validation → next commission step ⇒ set CPMP of AC
             if (!Boolean.TRUE.equals(meetingRequired)
-                    && Boolean.TRUE.equals(nextMeetingRequired)
+                    && Boolean.TRUE.equals(nextCommissionRequired)
                     && !Boolean.TRUE.equals(commissionRequired)
                     && !Boolean.TRUE.equals(assignRapporteur)
                     && (currentComIdForRouting == null || currentComIdForRouting == 0)) {
@@ -972,10 +972,12 @@ public class PpmFlowableService {
                 if (acIdVar == null) {
                     throw new MissingAcIdException("acId is required to route commission from AC validation");
                 }
+
                 Integer cpmpComId = acServiceImpl.getComIdByAcId(acIdVar);
                 if (cpmpComId == null) {
                     throw new ComNotFound("your ac dont have a cpmp", List.of(acIdVar));
                 }
+
                 Com cpmpCom = comServiceImpl.findById(cpmpComId);
                 if (cpmpCom == null) {
                     throw new ComNotFound("CPMP commission not found", List.of(cpmpComId));
@@ -984,6 +986,7 @@ public class PpmFlowableService {
                 if (!entityManager.contains(latestPpm)) {
                     latestPpm = entityManager.merge(latestPpm);
                 }
+
                 Ppm finalLatestPpm2 = latestPpm;
                 List<Com> currentComs = Optional.ofNullable(latestPpm.getComs())
                         .orElseGet(() -> {
@@ -991,11 +994,13 @@ public class PpmFlowableService {
                             finalLatestPpm2.setComs(l);
                             return l;
                         });
+
                 if (currentComs.stream().noneMatch(c -> c.getId().equals(cpmpComId))) {
                     currentComs.add(cpmpCom);
                 }
 
                 runtimeService.setVariable(task.getProcessInstanceId(), "comId", cpmpComId);
+
                 log.info("AC→CPMP: Set comId {} for process {}", cpmpComId, task.getProcessInstanceId());
 
                 skipComAssociationCheck = true;
@@ -1012,6 +1017,7 @@ public class PpmFlowableService {
                             "Aucune commission CNCMP Permanente n'est configurée. Impossible de passer à l’affectation.",
                             List.of());
                 }
+
                 if (cncmpPer == null) {
                     log.warn("CPMP→CNCMPP: findCNCMPP() returned null for process {}", task.getProcessInstanceId());
                     throw new ComNotFound(
@@ -1022,6 +1028,7 @@ public class PpmFlowableService {
                 if (!entityManager.contains(latestPpm)) {
                     latestPpm = entityManager.merge(latestPpm);
                 }
+
                 Ppm finalLatestPpm1 = latestPpm;
                 List<Com> currentComs = Optional.ofNullable(latestPpm.getComs())
                         .orElseGet(() -> {
@@ -1029,12 +1036,14 @@ public class PpmFlowableService {
                             finalLatestPpm1.setComs(l);
                             return l;
                         });
+
                 if (currentComs.stream().noneMatch(c -> c.getId().equals(cncmpPer.getId()))) {
                     currentComs.add(cncmpPer);
                 }
 
                 deferComIdAfterCompletion = cncmpPer.getId();
                 varsToSet.put("cncmpPerComId", cncmpPer.getId());
+
                 log.info("CPMP→CNCMPP: defer switch to PER comId {} after completion", cncmpPer.getId());
             }
         }
