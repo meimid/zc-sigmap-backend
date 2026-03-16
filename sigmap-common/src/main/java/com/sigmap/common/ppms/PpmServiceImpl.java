@@ -207,6 +207,7 @@ public class PpmServiceImpl implements PpmService {
         this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
         this.seuilGeneralService = seuilGeneralService;
         this.sourceFinancementService = sourceFinancementService;
+
         this.processVerbalReunionService = processVerbalReunionService;
         this.extraitPpmService = extraitPpmService;
         this.reunionPpmDocRepository = reunionPpmDocRepository;
