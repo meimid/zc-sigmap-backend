@@ -57,6 +57,7 @@
               flowable:formFieldValidation="true">
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false" />
+        <flowable:formProperty id="commissionRequired" name="commissionRequired" type="boolean" default="true" />
       </extensionElements>
       <incoming>Flow_1dsmkbd</incoming>
       <outgoing>Flow_1k11w8w</outgoing>
