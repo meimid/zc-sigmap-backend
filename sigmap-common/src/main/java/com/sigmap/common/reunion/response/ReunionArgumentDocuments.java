@@ -1,5 +1,6 @@
 package com.sigmap.common.reunion.response;
 
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +14,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ReunionArgumentDocuments {
-    private Set<String> documentCPMP=new HashSet<>();
-    private Set<String> documentCNCMPSpecialise=new HashSet<>();
-    private Set<String> documentCNCMPPermanente=new HashSet<>();
+    private Set<ReunionDocResponse> documentCPMP=new HashSet<>();
+    private Set<ReunionDocResponse> documentCNCMPSpecialise=new HashSet<>();
+    private Set<ReunionDocResponse> documentCNCMPPermanente=new HashSet<>();
 }

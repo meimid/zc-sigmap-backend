@@ -1,5 +1,6 @@
 package com.sigmap.common.reunion.response;
 
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ExtraitResponse {
-    private List<String> extraitCPMP=new ArrayList<>();
-    private List<String> extraitCNCMPP=new ArrayList<>();
+    private List<ReunionDocResponse> extraitCPMP=new ArrayList<>();
+    private List<ReunionDocResponse> extraitCNCMPP=new ArrayList<>();
 
 }

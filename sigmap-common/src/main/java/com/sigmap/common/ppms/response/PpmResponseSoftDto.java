@@ -2,6 +2,7 @@ package com.sigmap.common.ppms.response;
 
 import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.ppm_avis_note_rapporteur.response.PpmAvisNoteRapporteurResponse;
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import lombok.Data;
@@ -27,10 +28,9 @@ public class PpmResponseSoftDto {
     private Integer nbrActualisation;
     private String remarque;
     private String etapeProcess;
-    private List<String> pvCpmp;
-    private List<String> pvCncmpPermanente;
-    private List<String> pvCncmpSpecialisee;
-    private List<String> extraitCncmpPermanente;
-    private Set<PpmAvisNoteRapporteurResponse> avis =new HashSet<>();
-    private List<String> extraitCpmp;
+    private List<ReunionDocResponse> pvCpmp;
+    private List<ReunionDocResponse> pvCncmpPermanente;
+    private List<ReunionDocResponse> pvCncmpSpecialisee;
+    private List<ReunionDocResponse> extraitCncmpPermanente;
+    private List<ReunionDocResponse> extraitCpmp;
 }

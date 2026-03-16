@@ -6,6 +6,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Request.DocumentHolder;
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
@@ -132,28 +133,28 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
     private String etapeProcess;
 
     @Transient
-    private List<String> pvCpmp = new ArrayList<>();
+    private List<ReunionDocResponse> pvCpmp = new ArrayList<>();
 
     @Transient
-    private List<String> pvCncmpPermanente = new ArrayList<>();
+    private List<ReunionDocResponse> pvCncmpPermanente = new ArrayList<>();
 
     @Transient
-    private List<String> pvCncmpSpecialisee = new ArrayList<>();
+    private List<ReunionDocResponse> pvCncmpSpecialisee = new ArrayList<>();
 
     @Transient
-    private List<String> extraitCpmp = new ArrayList<>();
+    private List<ReunionDocResponse> extraitCpmp = new ArrayList<>();
 
     @Transient
-    private List<String> extraitCncmpPermanente = new ArrayList<>();
+    private List<ReunionDocResponse> extraitCncmpPermanente = new ArrayList<>();
 
     @Transient
-    private Set<String> documentCNCMPSpecialisee = new HashSet<>();
+    private Set<ReunionDocResponse> documentCNCMPSpecialisee = new HashSet<>();
 
     @Transient
-    private Set<String> documentCNCMPPermanente = new HashSet<>();
+    private Set<ReunionDocResponse> documentCNCMPPermanente = new HashSet<>();
 
     @Transient
-    private Set<String> documentCPMP = new HashSet<>();
+    private Set<ReunionDocResponse> documentCPMP = new HashSet<>();
 
     @Transient
 
