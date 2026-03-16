@@ -21,6 +21,7 @@ import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ProcessStatus;
@@ -102,6 +103,8 @@ import java.io.IOException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -354,8 +357,8 @@ public class PpmServiceImpl implements PpmService {
 
         if (acIds != null && !acIds.isEmpty()) {
 
-            Set<String> cpmp = new LinkedHashSet<>();
-            Set<String> cncmpp = new LinkedHashSet<>();
+            Set<ReunionDocResponse> cpmp = new LinkedHashSet<>();
+            Set<ReunionDocResponse> cncmpp = new LinkedHashSet<>();
 
             ExtraitResponse extrait = findAllExtraits(acIds, ppm.getId(), ppm.getVersion());
 
@@ -407,6 +410,7 @@ public class PpmServiceImpl implements PpmService {
     public PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
 
         PvResponse dto = new PvResponse();
+        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
         Set<String> userComTypes = comService.findAll(
                         Specification.where(ComSpecifications.deleted(false))
                                 .and(ComSpecifications.idIn(comIds))
@@ -444,6 +448,18 @@ public class PpmServiceImpl implements PpmService {
 
             for (Reunion r : reunions) {
 
+                Calendar calendar = r.getReunionDate();
+
+                LocalDate localDate = calendar.toInstant()
+                        .atZone(ZoneId.of("Africa/Nouakchott"))
+                        .toLocalDate();
+
+                String formattedDate = localDate.format(
+                        DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+                );
+                String ref=r.getCom().getAbreviation()+" "+formattedDate;
+                reunionDocResponse.setRef(ref);
+
                 String pvAlfrescoId = r.getProcessVerbal()
                         .getDocuments()
                         .stream()
@@ -466,23 +482,28 @@ public class PpmServiceImpl implements PpmService {
                     case "CPMP":
                         // CPMP user sees: CPMP PVs + CNCMP-P Permanent PVs
                         if ("CPMP".equals(reunionComType)) {
-                            dto.getPvCPMP().add(pvAlfrescoId);
+                            reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                            dto.getPvCPMP().add(reunionDocResponse);
                         }
                         if ("CNCMP-P".equals(reunionComType)) {
-                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                            reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                            dto.getPvCNCMPPermanente().add(reunionDocResponse);
                         }
                         break;
 
                     case "CNCMP-P":
                         // Permanent CNCMP sees : permanent PVs + CPMP PVs
                         if ("CNCMP-P".equals(reunionComType)) {
-                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                            reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                            dto.getPvCNCMPPermanente().add(reunionDocResponse);
                         }
                         if ("CNCMP-S".equals(reunionComType)) {
-                            dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                            reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                            dto.getPvCNCMPSpecialise().add(reunionDocResponse);
                         }
                         if ("CPMP".equals(reunionComType)) {
-                            dto.getPvCPMP().add(pvAlfrescoId);
+                            reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                            dto.getPvCPMP().add(reunionDocResponse);
                         }
                         break;
 
@@ -490,10 +511,12 @@ public class PpmServiceImpl implements PpmService {
                         // Specialized CNCMP sees specialized PVs + permanent PVs
                         if ("CNCMP-S".equals(reunionComType)&&
                                 (userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) {
-                            dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                            reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                            dto.getPvCNCMPSpecialise().add(reunionDocResponse);
                         }
                         if ("CNCMP-P".equals(reunionComType)) {
-                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                            reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                            dto.getPvCNCMPPermanente().add(reunionDocResponse);
                         }
                         break;
 
@@ -536,7 +559,18 @@ public class PpmServiceImpl implements PpmService {
 
         // 3) Process reunions
         for (Reunion r : reunions) {
+            Calendar calendar = r.getReunionDate();
 
+            LocalDate localDate = LocalDate.of(
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH) + 1,
+        calendar.get(Calendar.DAY_OF_MONTH)
+);
+
+            String formattedDate = localDate.format(
+                    DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+            );
+            String ref=r.getCom().getAbreviation()+" "+formattedDate;
             String reunionComType =
                     r.getCom() != null && r.getCom().getComType() != null && r.getCom().getComType().getCode() != null
                             ? r.getCom().getComType().getCode()
@@ -548,7 +582,7 @@ public class PpmServiceImpl implements PpmService {
                 continue;
             }
 
-            Set<String> pvAlfrescoIds = r.getReunionPpms().stream()
+            Set<ReunionDocResponse> pvAlfrescoIds = r.getReunionPpms().stream()
                     .filter(Objects::nonNull)
                     .flatMap(rp -> rp.getReunionPpmDocs().stream())
                     .filter(Objects::nonNull)
@@ -556,6 +590,12 @@ public class PpmServiceImpl implements PpmService {
                             &&ppmDoc.getPpmVer().equals(ppmVersion) &&
                             ppmDoc.getDocs() != null &&!ppmDoc.getDocs().getIsDeleted()? ppmDoc.getDocs().getAlfresco_id() : null)
                     .filter(Objects::nonNull)
+                    .map(alfId->{
+                        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
+                        reunionDocResponse.setRef(ref);
+                        reunionDocResponse.setAlfrescoId(alfId);
+                        return reunionDocResponse;
+                    })
 
                     .collect(Collectors.toSet());
 
@@ -567,6 +607,7 @@ public class PpmServiceImpl implements PpmService {
             log.debug("Reunion {} type={} docsCount={}", r.getId(), reunionComType, pvAlfrescoIds.size());
 
             if ("CPMP".equals(reunionComType)) {
+
                 dto.getDocumentCPMP().addAll(pvAlfrescoIds);
             }
             if ("CNCMP-S".equals(reunionComType)&&(userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) {
@@ -590,6 +631,7 @@ public class PpmServiceImpl implements PpmService {
 
     @Override
     public ExtraitResponse findAllExtraits(List<Integer> acIds, Integer ppmId, Integer ppmVersion) {
+        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
 
         ExtraitResponse dto = new ExtraitResponse();
         Set<String> seenCpmp = new HashSet<>();
@@ -608,7 +650,19 @@ public class PpmServiceImpl implements PpmService {
             if(!reunion.getStatus().equals(ReunionStatus.CLOTURER)){
                 continue;
             }
+            Calendar calendar = reunion.getReunionDate();
 
+
+            LocalDate localDate = LocalDate.of(
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH) + 1,
+        calendar.get(Calendar.DAY_OF_MONTH));
+
+            String formattedDate = localDate.format(
+                    DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+            );
+            String ref=reunion.getCom().getAbreviation()+" "+formattedDate;
+            reunionDocResponse.setRef(ref);
             String typeCom = reunion.getCom().getComType().getCode();
             log.info("EX: id={} type={} doc={} alfresco={} acId {}",
                     ex.getExtraitId(),
@@ -622,13 +676,15 @@ public class PpmServiceImpl implements PpmService {
 
                 String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
                 if (alfrescoId != null&&seenCpmp.add(alfrescoId)) {
-                    dto.getExtraitCPMP().add(alfrescoId);
+                    reunionDocResponse.setAlfrescoId(alfrescoId);
+                    dto.getExtraitCPMP().add(reunionDocResponse);
                 }
             }
             else if ("CNCMP-P".equals(typeCom)){
                 String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
                 if (alfrescoId != null&&seenPermanent.add(alfrescoId)) {
-                    dto.getExtraitCNCMPP().add(alfrescoId);
+                    reunionDocResponse.setAlfrescoId(alfrescoId);
+                    dto.getExtraitCNCMPP().add(reunionDocResponse);
                 }
             }
         }

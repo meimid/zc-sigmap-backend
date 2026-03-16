@@ -24,6 +24,7 @@ import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO
 import com.sigmap.common.dac_prix.DacPrix;
 import com.sigmap.common.dac_prix.DacPrixRepository;
 import com.sigmap.common.dac_prix.response.DacPrixResponce;
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
@@ -2390,7 +2391,18 @@ public class DacServiceImpl implements DacService {
 
         // 3) Process reunions
         for (Reunion r : reunions) {
+            Calendar calendar = r.getReunionDate();
 
+
+            LocalDate localDate = LocalDate.of(
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH) + 1,
+        calendar.get(Calendar.DAY_OF_MONTH));
+
+            String formattedDate = localDate.format(
+                    DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+            );
+            String ref=r.getCom().getAbreviation()+" "+formattedDate;
             String reunionComType =
                     r.getCom() != null && r.getCom().getComType() != null && r.getCom().getComType().getCode() != null
                             ? r.getCom().getComType().getCode()
@@ -2401,7 +2413,7 @@ public class DacServiceImpl implements DacService {
                 continue;
             }
 
-            Set<String> alfrescoIds = r.getReunionDacs().stream()
+            Set<ReunionDocResponse> alfrescoIds = r.getReunionDacs().stream()
                     .filter(Objects::nonNull)
                     // if you have rd.getReunionDacDocs()
                     .flatMap(rd -> rd.getReunionDacDocs().stream())
@@ -2414,6 +2426,12 @@ public class DacServiceImpl implements DacService {
                                     : null
                     )
                     .filter(Objects::nonNull)
+                    .map(alfId->{
+                        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
+                        reunionDocResponse.setRef(ref);
+                        reunionDocResponse.setAlfrescoId(alfId);
+                        return reunionDocResponse;
+                    })
                     .collect(Collectors.toSet());
 
             if (alfrescoIds.isEmpty()) {
@@ -2445,6 +2463,7 @@ public class DacServiceImpl implements DacService {
     public PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion) {
 
         PvResponse dto = new PvResponse();
+        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
         Set<String> pvCpmp = new HashSet<>();
         Set<String> pvCncmpSpecialise = new HashSet<>();
         Set<String>pvCpcmpPermanant=new HashSet<>();
@@ -2468,7 +2487,17 @@ public class DacServiceImpl implements DacService {
 
 
             for (Reunion r : reunions) {
+                Calendar calendar = r.getReunionDate();
 
+                LocalDate localDate = calendar.toInstant()
+                        .atZone(ZoneId.of("Africa/Nouakchott"))
+                        .toLocalDate();
+
+                String formattedDate = localDate.format(
+                        DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+                );
+                String ref=r.getCom().getAbreviation()+" "+formattedDate;
+                reunionDocResponse.setRef(ref);
                 String pvAlfrescoId = r.getProcessVerbal()
                         .getDocuments()
                         .stream()
@@ -2491,22 +2520,27 @@ public class DacServiceImpl implements DacService {
 
                         case "CPMP":
                             if ("CPMP".equals(reunionComType)&&pvCpmp.add(pvAlfrescoId)) {
-                                dto.getPvCPMP().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCPMP().add(reunionDocResponse);
                             }
                             if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
-                                dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPPermanente().add(reunionDocResponse);
                             }
                             break;
 
                         case "CNCMP-P":
                             if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
-                                dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPPermanente().add(reunionDocResponse);
                             }
                             if ("CNCMP-S".equals(reunionComType)) {
-                                dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPSpecialise().add(reunionDocResponse);
                             }
                             if ("CPMP".equals(reunionComType)&&pvCpmp.add(pvAlfrescoId)) {
-                                dto.getPvCPMP().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCPMP().add(reunionDocResponse);
                             }
                             break;
 
@@ -2514,10 +2548,12 @@ public class DacServiceImpl implements DacService {
                             // Your original condition is redundant inside this case, but keep it if you want:
                             if ("CNCMP-S".equals(reunionComType)&&pvCncmpSpecialise.add(pvAlfrescoId)
                                     && (userComTypes.contains("CNCMP-S") || userComTypes.contains("CNCMP-P"))) {
-                                dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPSpecialise().add(reunionDocResponse);
                             }
                             if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
-                                dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPPermanente().add(reunionDocResponse);
                             }
                             break;
 
@@ -2536,6 +2572,7 @@ public class DacServiceImpl implements DacService {
 
     @Override
     public ExtraitResponse findAllExtraits(List<Integer> acIds, Integer dacId, Integer dacVer) {
+        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
         ExtraitResponse dto = new ExtraitResponse();
         Set<String> seenCpmp = new HashSet<>();
         Set<String> seenPermanent = new HashSet<>();
@@ -2550,7 +2587,18 @@ public class DacServiceImpl implements DacService {
                 continue;
 
             Reunion reunion = reunionOpt.get();
+            Calendar calendar = reunion.getReunionDate();
 
+            LocalDate localDate = LocalDate.of(
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH) + 1,
+        calendar.get(Calendar.DAY_OF_MONTH));
+
+            String formattedDate = localDate.format(
+                    DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+            );
+            String ref=reunion.getCom().getAbreviation()+" "+formattedDate;
+            reunionDocResponse.setRef(ref);
             String typeCom = reunion.getCom().getComType().getCode();
             log.info("EX: id={} type={} doc={} alfresco={} acId {}",
                     ex.getExtraitId(),
@@ -2564,13 +2612,15 @@ public class DacServiceImpl implements DacService {
 
                 String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
                 if (alfrescoId != null&&seenCpmp.add(alfrescoId)) {
-                    dto.getExtraitCPMP().add(alfrescoId);
+                    reunionDocResponse.setAlfrescoId(alfrescoId);
+                    dto.getExtraitCPMP().add(reunionDocResponse);
                 }
             }
             else if ("CNCMP-P".equals(typeCom)){
                 String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
                 if (alfrescoId != null&&seenPermanent.add(alfrescoId)) {
-                    dto.getExtraitCNCMPP().add(alfrescoId);
+                    reunionDocResponse.setAlfrescoId(alfrescoId);
+                    dto.getExtraitCNCMPP().add(reunionDocResponse);
                 }
             }
         }
