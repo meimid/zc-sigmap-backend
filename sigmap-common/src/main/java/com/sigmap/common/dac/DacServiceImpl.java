@@ -2565,14 +2565,14 @@ public class DacServiceImpl implements DacService {
         boolean isSuperAdmin = Authentication.hasRole("SUPER_ADMIN");
         boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
 
-        List<Dac> ppms = new ArrayList<>();
+        List<Dac> dacs = new ArrayList<>();
         if (isAdminCentral || isSuperAdmin) {
-            ppms = findAllForSuperAdminAndAdminCentral(spec);
+            dacs = findAllForSuperAdminAndAdminCentral(spec);
         } else {
             String userId = Authentication.getCurrentUserId().orElseThrow(() -> new UserIdRequiredException(""));
-            ppms = findAllForComUser(spec, userId);
+            dacs = findAllForComUser(spec, userId);
         }
-        return ppms;
+        return dacs;
     }
 
     @Override
