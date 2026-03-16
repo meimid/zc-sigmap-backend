@@ -9,6 +9,8 @@ import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.ppm_avis_note_rapporteur.PpmAvisNoteRapporteur;
+import com.sigmap.common.ppm_avis_note_rapporteur.response.PpmAvisNoteRapporteurResponse;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
@@ -28,6 +30,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Service interface for managing {@link Ppm}.
@@ -346,5 +349,6 @@ public interface PpmService {
      ExtraitResponse findAllExtraits(List<Integer> acIds, Integer ppmId, Integer ppmVersion) ;
     PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion);
     ReunionArgumentDocuments listDocPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) throws PpmNotFound, AcNotFound;
+    Set<PpmAvisNoteRapporteurResponse> avisNoteRapporteurs(Integer ppmId, Integer ppmVersion, List<Integer> comIds);
 }
 

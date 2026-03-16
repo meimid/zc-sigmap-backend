@@ -2,6 +2,7 @@ package com.sigmap.common.ppms.response;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.ppm_avis_note_rapporteur.response.PpmAvisNoteRapporteurResponse;
 import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.response.BaseEntityResponse;
@@ -9,7 +10,9 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Data
 public class PpmResponse {
@@ -34,6 +37,7 @@ public class PpmResponse {
     private List<String> pvCncmpSpecialisee;
     private List<String> extraitCncmpPermanente;
     private List<String> extraitCpmp;
+    private Set<PpmAvisNoteRapporteurResponse> avis =new HashSet<>();
     private BaseEntityResponse metadata;
 
 }

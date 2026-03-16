@@ -9,6 +9,7 @@ import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.ppm_avis_note_rapporteur.response.PpmAvisNoteRapporteurResponse;
 import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
@@ -153,6 +154,10 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
 
     @Transient
     private Set<String> documentCPMP = new HashSet<>();
+
+    @Transient
+
+    private Set<PpmAvisNoteRapporteurResponse> avis =new HashSet<>();
 
     @Column(name = "published_at")
     private Calendar publishedAt;
