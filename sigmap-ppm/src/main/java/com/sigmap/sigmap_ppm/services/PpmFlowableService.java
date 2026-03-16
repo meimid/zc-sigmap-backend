@@ -961,9 +961,9 @@ public class PpmFlowableService {
 
             Integer currentComIdForRouting = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
 
-            // AC validation (no meeting) → next meeting=true ⇒ set CPMP of AC
+            // AC validation → next commission step ⇒ set CPMP of AC
             if (!Boolean.TRUE.equals(meetingRequired)
-                    && Boolean.TRUE.equals(nextMeetingRequired)
+                    && Boolean.TRUE.equals(nextCommissionRequired)
                     && !Boolean.TRUE.equals(commissionRequired)
                     && !Boolean.TRUE.equals(assignRapporteur)
                     && (currentComIdForRouting == null || currentComIdForRouting == 0)) {
@@ -972,10 +972,12 @@ public class PpmFlowableService {
                 if (acIdVar == null) {
                     throw new MissingAcIdException("acId is required to route commission from AC validation");
                 }
+
                 Integer cpmpComId = acServiceImpl.getComIdByAcId(acIdVar);
                 if (cpmpComId == null) {
                     throw new ComNotFound("your ac dont have a cpmp", List.of(acIdVar));
                 }
+
                 Com cpmpCom = comServiceImpl.findById(cpmpComId);
                 if (cpmpCom == null) {
                     throw new ComNotFound("CPMP commission not found", List.of(cpmpComId));
@@ -984,6 +986,7 @@ public class PpmFlowableService {
                 if (!entityManager.contains(latestPpm)) {
                     latestPpm = entityManager.merge(latestPpm);
                 }
+
                 Ppm finalLatestPpm2 = latestPpm;
                 List<Com> currentComs = Optional.ofNullable(latestPpm.getComs())
                         .orElseGet(() -> {
@@ -991,11 +994,13 @@ public class PpmFlowableService {
                             finalLatestPpm2.setComs(l);
                             return l;
                         });
+
                 if (currentComs.stream().noneMatch(c -> c.getId().equals(cpmpComId))) {
                     currentComs.add(cpmpCom);
                 }
 
                 runtimeService.setVariable(task.getProcessInstanceId(), "comId", cpmpComId);
+
                 log.info("AC→CPMP: Set comId {} for process {}", cpmpComId, task.getProcessInstanceId());
 
                 skipComAssociationCheck = true;
@@ -1012,6 +1017,7 @@ public class PpmFlowableService {
                             "Aucune commission CNCMP Permanente n'est configurée. Impossible de passer à l’affectation.",
                             List.of());
                 }
+
                 if (cncmpPer == null) {
                     log.warn("CPMP→CNCMPP: findCNCMPP() returned null for process {}", task.getProcessInstanceId());
                     throw new ComNotFound(
@@ -1022,6 +1028,7 @@ public class PpmFlowableService {
                 if (!entityManager.contains(latestPpm)) {
                     latestPpm = entityManager.merge(latestPpm);
                 }
+
                 Ppm finalLatestPpm1 = latestPpm;
                 List<Com> currentComs = Optional.ofNullable(latestPpm.getComs())
                         .orElseGet(() -> {
@@ -1029,12 +1036,14 @@ public class PpmFlowableService {
                             finalLatestPpm1.setComs(l);
                             return l;
                         });
+
                 if (currentComs.stream().noneMatch(c -> c.getId().equals(cncmpPer.getId()))) {
                     currentComs.add(cncmpPer);
                 }
 
                 deferComIdAfterCompletion = cncmpPer.getId();
                 varsToSet.put("cncmpPerComId", cncmpPer.getId());
+
                 log.info("CPMP→CNCMPP: defer switch to PER comId {} after completion", cncmpPer.getId());
             }
         }
@@ -1777,17 +1786,26 @@ public class PpmFlowableService {
                 if (taskElement instanceof org.flowable.bpmn.model.UserTask) {
                     List<SequenceFlow> outgoingFlows = ((org.flowable.bpmn.model.UserTask) taskElement)
                             .getOutgoingFlows();
+
                     for (SequenceFlow flow : outgoingFlows) {
                         FlowElement targetElement = bpmnModel.getFlowElement(flow.getTargetRef());
+
                         if (targetElement instanceof ExclusiveGateway) {
-                            List<SequenceFlow> gatewayFlows = ((ExclusiveGateway) targetElement).getOutgoingFlows();
+                            List<SequenceFlow> gatewayFlows =
+                                    ((ExclusiveGateway) targetElement).getOutgoingFlows();
+
                             for (SequenceFlow gatewayFlow : gatewayFlows) {
-                                FlowElement nextElement = bpmnModel.getFlowElement(gatewayFlow.getTargetRef());
-                                String nextTargetName = (nextElement != null && nextElement.getName() != null)
-                                        ? nextElement.getName()
-                                        : "";
+
+                                FlowElement nextElement =
+                                        bpmnModel.getFlowElement(gatewayFlow.getTargetRef());
+
+                                String nextTargetName =
+                                        (nextElement != null && nextElement.getName() != null)
+                                                ? nextElement.getName()
+                                                : "";
 
                                 String currentTaskName = task.getName();
+
                                 if (currentTaskName != null && currentTaskName.contains("Validation (AC)")) {
                                     if (Boolean.TRUE.equals(isCondApprove)) {
                                         if (nextTargetName.contains("(CPMP)"))
@@ -1799,19 +1817,23 @@ public class PpmFlowableService {
                                 }
 
                                 String conditionExpression = gatewayFlow.getConditionExpression();
+
                                 if (conditionExpression != null) {
+
                                     String variableName = extractVariableName(conditionExpression);
                                     String rhs = extractConditionValue(conditionExpression);
 
                                     nextElement = bpmnModel.getFlowElement(gatewayFlow.getTargetRef());
-                                    String nextStepName = (nextElement != null && nextElement.getName() != null
-                                            && !nextElement.getName().isEmpty())
-                                            ? nextElement.getName()
-                                            : (nextElement != null ? nextElement.getId() : "Unknown");
 
-                                    // Special handling for split CNCMP decisions: REPORT or COND_APPROVE
+                                    String nextStepName =
+                                            (nextElement != null && nextElement.getName() != null
+                                                    && !nextElement.getName().isEmpty())
+                                                    ? nextElement.getName()
+                                                    : (nextElement != null ? nextElement.getId() : "Unknown");
+
                                     if (conditionExpression.contains("REPORT")
                                             && conditionExpression.contains("COND_APPROVE")) {
+
                                         NextStepDTO reportStep = new NextStepDTO();
                                         reportStep.setValidationVariable("cncmpDecision");
                                         reportStep.setValidationValue("REPORT");
@@ -1825,7 +1847,9 @@ public class PpmFlowableService {
                                         condApproveStep.setNextTaskName(nextStepName);
                                         condApproveStep.setActionLabel("Approuver sous réserve");
                                         nextSteps.add(condApproveStep);
+
                                     } else if (variableName != null && rhs != null) {
+
                                         NextStepDTO nextStep = new NextStepDTO();
                                         nextStep.setValidationVariable(variableName);
                                         nextStep.setValidationValue(rhs);
@@ -1833,71 +1857,110 @@ public class PpmFlowableService {
 
                                         if ("APPROVE".equalsIgnoreCase(rhs)) {
                                             nextStep.setActionLabel("Approuver");
+
                                         } else if ("REJECT".equalsIgnoreCase(rhs)) {
                                             nextStep.setActionLabel("Rejeter");
+
                                         } else if ("REJECT_END".equalsIgnoreCase(rhs)) {
                                             nextStep.setActionLabel("Rejet");
+
                                         } else if ("COND_APPROVE".equalsIgnoreCase(rhs)) {
                                             nextStep.setActionLabel("Approuver sous réserve");
+
                                         } else if ("REPORT".equalsIgnoreCase(rhs)) {
                                             nextStep.setActionLabel("Reporter");
+
                                         } else if ("CI".equalsIgnoreCase(rhs)) {
                                             nextStep.setActionLabel("Révision SCS");
+
                                         } else if ("true".equalsIgnoreCase(rhs)) {
-                                            if (currentTaskName != null && currentTaskName.contains("Validation (AC)")
+
+                                            if (currentTaskName != null
+                                                    && currentTaskName.contains("Validation (AC)")
                                                     && nextTargetName.contains("Publication")) {
+
                                                 nextStep.setActionLabel("Envoyer pour publication");
+
                                             } else {
                                                 nextStep.setActionLabel("Valider");
                                             }
+
                                         } else if ("false".equalsIgnoreCase(rhs)) {
-                                            String taskName = task.getName();
-                                            if (taskName != null && taskName.contains("(CPMP)")) {
-                                                nextStep.setActionLabel("Reporter");
+
+                                            if (variableName != null
+                                                    && variableName.toLowerCase().contains("filtrage")) {
+
+                                                nextStep.setActionLabel("Complément d'information");
+
                                             } else {
-                                                nextStep.setActionLabel("Rejeter");
+
+                                                String taskName = task.getName();
+
+                                                if (taskName != null && taskName.contains("(CPMP)")) {
+                                                    nextStep.setActionLabel("Reporter");
+                                                } else {
+                                                    nextStep.setActionLabel("Rejeter");
+                                                }
                                             }
+
                                         } else if (nextElement instanceof org.flowable.bpmn.model.EndEvent) {
+
                                             nextStep.setActionLabel("Publier");
+
                                         } else {
+
                                             nextStep.setActionLabel(variableName + " = " + rhs);
                                         }
+
                                         nextSteps.add(nextStep);
                                     }
                                 }
+
                             }
+
                         } else {
-                            String nextStepName = (targetElement != null && targetElement.getName() != null
-                                    && !targetElement.getName().isEmpty())
-                                    ? targetElement.getName()
-                                    : (targetElement != null ? targetElement.getId() : "Complete");
+
+                            String nextStepName =
+                                    (targetElement != null && targetElement.getName() != null
+                                            && !targetElement.getName().isEmpty())
+                                            ? targetElement.getName()
+                                            : (targetElement != null ? targetElement.getId() : "Complete");
 
                             NextStepDTO nextStep = new NextStepDTO();
                             nextStep.setValidationVariable(null);
                             nextStep.setValidationValue(null);
                             nextStep.setNextTaskName(nextStepName);
+
                             if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
+
                                 nextStep.setActionLabel("Publier");
+
                                 log.info(
                                         "Target element is an EndEvent, setting actionLabel to 'Publier' for task [{}]",
                                         task.getId());
+
                             } else {
+
                                 nextStep.setValidationValue("Passer pour validation");
                                 nextStep.setActionLabel("Passer pour validation");
                             }
+
                             nextSteps.add(nextStep);
                             log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(),
                                     nextStepName, nextStep.getActionLabel());
                         }
                     }
+
                 } else {
                     log.info("Task [{}] is not a UserTask: {}", task.getId(),
                             taskElement != null ? taskElement.getClass().getSimpleName() : "null");
                 }
+
             } else {
                 log.info("BPMN model not found for process definition [{}] for task [{}]",
                         task.getProcessDefinitionId(), task.getId());
             }
+
         } catch (Exception e) {
             log.info("Failed to determine next steps for task [" + task.getId() + "]: " + e.getMessage());
             NextStepDTO nextStep = new NextStepDTO();
@@ -1907,9 +1970,9 @@ public class PpmFlowableService {
             nextStep.setActionLabel("Complete");
             nextSteps.add(nextStep);
         }
+
         return nextSteps;
     }
-
     /* ======================= list user tasks ======================= */
 
     public TaskListResponseDTO getUserTasks() {
