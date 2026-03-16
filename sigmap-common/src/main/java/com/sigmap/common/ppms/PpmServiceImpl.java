@@ -561,9 +561,11 @@ public class PpmServiceImpl implements PpmService {
         for (Reunion r : reunions) {
             Calendar calendar = r.getReunionDate();
 
-            LocalDate localDate = calendar.toInstant()
-                    .atZone(ZoneId.of("Africa/Nouakchott"))
-                    .toLocalDate();
+            LocalDate localDate = LocalDate.of(
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH) + 1,
+        calendar.get(Calendar.DAY_OF_MONTH)
+);
 
             String formattedDate = localDate.format(
                     DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
@@ -650,9 +652,11 @@ public class PpmServiceImpl implements PpmService {
             }
             Calendar calendar = reunion.getReunionDate();
 
-            LocalDate localDate = calendar.toInstant()
-                    .atZone(ZoneId.of("Africa/Nouakchott"))
-                    .toLocalDate();
+
+            LocalDate localDate = LocalDate.of(
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH) + 1,
+        calendar.get(Calendar.DAY_OF_MONTH));
 
             String formattedDate = localDate.format(
                     DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
