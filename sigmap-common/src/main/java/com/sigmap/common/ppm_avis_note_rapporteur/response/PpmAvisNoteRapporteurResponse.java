@@ -10,7 +10,7 @@ import java.util.Calendar;
 public class PpmAvisNoteRapporteurResponse {
     private String avis;
     private String user;
-    private LocalDateTime createdAt;
+    private String createdAt;
     private String alfrescoId;
 
 

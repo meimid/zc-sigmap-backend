@@ -691,8 +691,10 @@ public class PpmServiceImpl implements PpmService {
                     calendar.get(Calendar.MINUTE),
                     calendar.get(Calendar.SECOND)
             );
-
-            avisNoteRapporteur.setCreatedAt(createdTime);
+            String formattedDate = createdTime.format(
+                    DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+            );
+            avisNoteRapporteur.setCreatedAt(formattedDate);
 
             log.info("avisNoteRapporteur={}", avisNoteRapporteur);
 
