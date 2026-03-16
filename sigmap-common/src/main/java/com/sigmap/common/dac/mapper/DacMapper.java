@@ -49,8 +49,6 @@ public interface DacMapper {
 
     DacIdVerRefResponseDto mapToDacIdVerRefResponseDto(Dac source);
 
-    DacDropListResponse mapToDacDropListResponse(Dac source);
-
 }
 
 

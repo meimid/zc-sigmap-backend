@@ -11,8 +11,8 @@ import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DacDropListResponse {
-    private Integer dacId;
-    private String reference;
+    private Integer id;
+    private String ref;
 
 
 }

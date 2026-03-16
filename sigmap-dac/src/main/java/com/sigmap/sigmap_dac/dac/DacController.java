@@ -566,7 +566,11 @@ public class DacController {
   public ResponseEntity<List<DacDropListResponse>> findAllForWebsite(DacQuery query) {
     Specification specification = query.toSpecification();
     List<Dac> dacs = dacService.findAllDacs(specification);
-    List<DacDropListResponse> responses = dacs.stream().map(DacMapper.INSTANCE::mapToDacDropListResponse)
+    List<DacDropListResponse> responses = dacs.stream().map(dac->{
+      DacDropListResponse response = new DacDropListResponse();
+      response.setId(dac.getDacId());
+      response.setRef(dac.getReference());
+      return response;})
             .collect(Collectors.toList());
     return ResponseEntity.ok(responses);
   }
