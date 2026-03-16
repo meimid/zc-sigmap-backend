@@ -176,7 +176,12 @@ public class PpmServiceImpl implements PpmService {
                           ComService comService, ReunionRepository reunionRepository,
                           ProcessVerbalReunionExtraitService processVerbalReunionExtraitService,
                           SeuilGeneralService seuilGeneralService,
-                          SourceFinancementService sourceFinancementService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitPpmService extraitPpmService, ReunionPpmDocRepository reunionPpmDocRepository, PpmAvisNoteRapporteurService ppmAvisNoteRapporteurService, KeycloakAdminService keycloakAdminService) {
+                          SourceFinancementService sourceFinancementService,
+                          ProcessVerbalReunionService processVerbalReunionService,
+                          ProcessVerbalReunionExtraitPpmService extraitPpmService,
+                          ReunionPpmDocRepository reunionPpmDocRepository,
+                          PpmAvisNoteRapporteurService ppmAvisNoteRapporteurService,
+                          KeycloakAdminService keycloakAdminService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -202,7 +207,6 @@ public class PpmServiceImpl implements PpmService {
         this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
         this.seuilGeneralService = seuilGeneralService;
         this.sourceFinancementService = sourceFinancementService;
-
         this.processVerbalReunionService = processVerbalReunionService;
         this.extraitPpmService = extraitPpmService;
         this.reunionPpmDocRepository = reunionPpmDocRepository;
