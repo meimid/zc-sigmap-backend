@@ -2,6 +2,7 @@ package com.sigmap.common.ppms.response;
 
 import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
@@ -33,13 +34,13 @@ public class PpmResponseDto {
     private Boolean actualise;
     private Integer nbrActualisation;
     private String etapeProcess;
-    private List<String> pvCpmp;
-    private List<String> pvCncmpPermanente;
-    private List<String> pvCncmpSpecialisee;
-    private List<String> extraitCncmpPermanente;
-    private List<String> extraitCpmp;
-    private Set<String> documentCNCMPSpecialisee = new HashSet<>();
-    private Set<String> documentCNCMPPermanente = new HashSet<>();
-    private Set<String> documentCPMP = new HashSet<>();
+    private List<ReunionDocResponse> pvCpmp;
+    private List<ReunionDocResponse> pvCncmpPermanente;
+    private List<ReunionDocResponse> pvCncmpSpecialisee;
+    private List<ReunionDocResponse> extraitCncmpPermanente;
+    private List<ReunionDocResponse> extraitCpmp;
+    private Set<ReunionDocResponse> documentCNCMPSpecialisee = new HashSet<>();
+    private Set<ReunionDocResponse> documentCNCMPPermanente = new HashSet<>();
+    private Set<ReunionDocResponse> documentCPMP = new HashSet<>();
     private BaseEntityResponse metadata;
 }

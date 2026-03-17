@@ -7,6 +7,7 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.dac.response.ParticipantResponse;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.response.UserComSoftResponse;
@@ -123,5 +124,7 @@ public interface ComService {
      */
     List<UserComSoftResponse> getCpmpMembersByAc(Integer acId)
             throws AcNotFound;
+
+    List<UserComSoftResponse> findAllComMemebersByComId(Integer comId);
 
 }

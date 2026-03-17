@@ -25,6 +25,7 @@ import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO
 import com.sigmap.common.dac_prix.DacPrix;
 import com.sigmap.common.dac_prix.DacPrixRepository;
 import com.sigmap.common.dac_prix.response.DacPrixResponce;
+import com.sigmap.common.docs.Response.ReunionDocResponse;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
@@ -591,70 +592,83 @@ public class DacServiceImpl implements DacService {
             return;
         }
 
-        // Parcourir tous les paragraphes pour trouver le marqueur
-        // Utiliser une copie de la liste pour éviter ConcurrentModificationException si
-        // on supprime des paragraphes
-        List<XWPFParagraph> paragraphs = new ArrayList<>(document.getParagraphs());
-        for (XWPFParagraph p : paragraphs) {
-            String text = p.getText();
-            String marker = "**" + tableName + "**";
+        // Loop until no more markers are found
+        while (true) {
+            boolean markerFound = false;
 
-            if (text != null && text.contains(marker)) {
-                log.debug("Marqueur de tableau trouvé: {}", marker);
+            // Parcourir tous les paragraphes pour trouver le marqueur
+            // Utiliser une copie de la liste pour éviter ConcurrentModificationException si
+            // on supprime des paragraphes
+            List<XWPFParagraph> paragraphs = new ArrayList<>(document.getParagraphs());
+            for (XWPFParagraph p : paragraphs) {
+                String text = p.getText();
+                String marker = "**" + tableName + "**";
 
-                try {
-                    // Obtenir la position du curseur au paragraphe actuel
-                    XmlCursor cursor = p.getCTP().newCursor();
+                if (text != null && text.contains(marker)) {
+                    log.debug("Marqueur de tableau trouvé: {}", marker);
 
-                    // Insérer le tableau à la position du curseur (juste avant le paragraphe)
-                    // Note: insertNewTbl insère le tableau à la position du curseur
-                    XWPFTable table = document.insertNewTbl(cursor);
+                    try {
+                        // Obtenir la position du curseur au paragraphe actuel
+                        XmlCursor cursor = p.getCTP().newCursor();
 
-                    // Ajouter les données
-                    if (!tableData.isEmpty()) {
-                        // Ajouter l'en-tête
-                        // XWPFTable vient avec une ligne par défaut
-                        XWPFTableRow headerRow = table.getRow(0);
-                        int colIndex = 0;
-
-                        // Utiliser les clés de la première ligne comme en-têtes
-                        Map<String, String> firstRow = tableData.get(0);
-                        for (String header : firstRow.keySet()) {
-                            if (colIndex > 0) {
-                                headerRow.createCell();
-                            }
-                            XWPFTableCell cell = headerRow.getCell(colIndex);
-                            setCellText(cell, header, true);
-                            colIndex++;
-                        }
+                        // Insérer le tableau à la position du curseur (juste avant le paragraphe)
+                        // Note: insertNewTbl insère le tableau à la position du curseur
+                        XWPFTable table = document.insertNewTbl(cursor);
 
                         // Ajouter les données
-                        for (int j = 1; j < tableData.size(); j++) {
-                            Map<String, String> rowData = tableData.get(j);
-                            XWPFTableRow dataRow = table.createRow();
-                            colIndex = 0;
-                            for (String value : rowData.values()) {
-                                dataRow.getCell(colIndex).setText(value != null ? value : "");
+                        if (!tableData.isEmpty()) {
+                            // Ajouter l'en-tête
+                            // XWPFTable vient avec une ligne par défaut
+                            XWPFTableRow headerRow = table.getRow(0);
+                            int colIndex = 0;
+
+                            // Utiliser les clés de la première ligne comme en-têtes
+                            Map<String, String> firstRow = tableData.get(0);
+                            for (String header : firstRow.keySet()) {
+                                if (colIndex > 0) {
+                                    headerRow.createCell();
+                                }
+                                XWPFTableCell cell = headerRow.getCell(colIndex);
+                                setCellText(cell, header, true);
                                 colIndex++;
                             }
+
+                            // Ajouter les données
+                            for (int j = 1; j < tableData.size(); j++) {
+                                Map<String, String> rowData = tableData.get(j);
+                                XWPFTableRow dataRow = table.createRow();
+                                colIndex = 0;
+                                for (String value : rowData.values()) {
+                                    dataRow.getCell(colIndex).setText(value != null ? value : "");
+                                    colIndex++;
+                                }
+                            }
                         }
+
+                        log.debug("Tableau '{}' inséré avec succès avec {} lignes", tableName, tableData.size());
+
+                        // Supprimer le paragraphe contenant le marqueur car il a été remplacé
+                        int pos = document.getPosOfParagraph(p);
+                        if (pos != -1) {
+                            document.removeBodyElement(pos);
+                        }
+
+                        markerFound = true;
+                        break; // Exit the inner loop to restart the search from the beginning
+
+                    } catch (Exception e) {
+                        log.error("Erreur lors de l'insertion du tableau '{}': {}", tableName, e.getMessage(), e);
                     }
-
-                    log.debug("Tableau '{}' inséré avec succès avec {} lignes", tableName, tableData.size());
-
-                    // Supprimer le paragraphe contenant le marqueur car il a été remplacé
-                    int pos = document.getPosOfParagraph(p);
-                    if (pos != -1) {
-                        document.removeBodyElement(pos);
-                    }
-
-                    return;
-
-                } catch (Exception e) {
-                    log.error("Erreur lors de l'insertion du tableau '{}': {}", tableName, e.getMessage(), e);
                 }
             }
+
+            // If no marker was found in this pass, exit the while loop
+            if (!markerFound) {
+                break;
+            }
         }
+
+        // This warn can be kept or removed since we now replace all
         log.warn("Aucun marqueur de tableau trouvé pour: {}", "**table:" + tableName + "**");
     }
 
@@ -688,37 +702,48 @@ public class DacServiceImpl implements DacService {
    private void replaceListPattern(XWPFDocument document, String listName, List<String> items) {
         if (items == null || items.isEmpty()) return;
         
-        // Parcourir tous les paragraphes du document
-        for (int i = 0; i < document.getParagraphs().size(); i++) {
-            XWPFParagraph p = document.getParagraphs().get(i);
-            String text = p.getText();
+        // Loop until no more markers are found
+        while (true) {
+            boolean markerFound = false;
+            
+            // Parcourir tous les paragraphes du document
+            for (int i = 0; i < document.getParagraphs().size(); i++) {
+                XWPFParagraph p = document.getParagraphs().get(i);
+                String text = p.getText();
 
-            if (text != null && text.contains("**list:" + listName + "**")) {
-                log.debug("Marqueur de liste trouvé: {}", text);
+                if (text != null && text.contains("**list:" + listName + "**")) {
+                    log.debug("Marqueur de liste trouvé: {}", text);
 
-                // Créer un curseur à la position du marqueur
-                XmlCursor cursor = p.getCTP().newCursor();
+                    // Créer un curseur à la position du marqueur
+                    XmlCursor cursor = p.getCTP().newCursor();
 
-                // Insérer chaque élément comme un nouveau paragraphe
-                for (String item : items) {
-                    if (item != null && !item.trim().isEmpty()) {
-                        // Créer un nouveau paragraphe à la position du curseur
-                        XWPFParagraph newPara = document.insertNewParagraph(cursor);
-                        newPara.setIndentationLeft(720);
-                        newPara.createRun().setText("- " + item.trim());
-                        
-                        // Déplacer le curseur après le paragraphe inséré
-                        cursor = newPara.getCTP().newCursor();
-                        cursor.toNextSibling();
+                    // Insérer chaque élément comme un nouveau paragraphe
+                    for (String item : items) {
+                        if (item != null && !item.trim().isEmpty()) {
+                            // Créer un nouveau paragraphe à la position du curseur
+                            XWPFParagraph newPara = document.insertNewParagraph(cursor);
+                            newPara.setIndentationLeft(720);
+                            newPara.createRun().setText("- " + item.trim());
+                            
+                            // Déplacer le curseur après le paragraphe inséré
+                            cursor = newPara.getCTP().newCursor();
+                            cursor.toNextSibling();
+                        }
                     }
-                }
 
-                // Supprimer le paragraphe du marqueur
-                int pos = document.getPosOfParagraph(p);
-                if (pos != -1) {
-                    document.removeBodyElement(pos);
+                    // Supprimer le paragraphe du marqueur
+                    int pos = document.getPosOfParagraph(p);
+                    if (pos != -1) {
+                        document.removeBodyElement(pos);
+                    }
+                    markerFound = true;
+                    break; // Exit the inner loop to restart the search from the beginning
                 }
-                return;
+            }
+            
+            // If no marker was found in this pass, exit the while loop
+            if (!markerFound) {
+                break;
             }
         }
    }
@@ -2372,7 +2397,18 @@ public class DacServiceImpl implements DacService {
 
         // 3) Process reunions
         for (Reunion r : reunions) {
+            Calendar calendar = r.getReunionDate();
 
+
+            LocalDate localDate = LocalDate.of(
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH) + 1,
+        calendar.get(Calendar.DAY_OF_MONTH));
+
+            String formattedDate = localDate.format(
+                    DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+            );
+            String ref=r.getCom().getAbreviation()+" "+formattedDate;
             String reunionComType =
                     r.getCom() != null && r.getCom().getComType() != null && r.getCom().getComType().getCode() != null
                             ? r.getCom().getComType().getCode()
@@ -2383,7 +2419,7 @@ public class DacServiceImpl implements DacService {
                 continue;
             }
 
-            Set<String> alfrescoIds = r.getReunionDacs().stream()
+            Set<ReunionDocResponse> alfrescoIds = r.getReunionDacs().stream()
                     .filter(Objects::nonNull)
                     // if you have rd.getReunionDacDocs()
                     .flatMap(rd -> rd.getReunionDacDocs().stream())
@@ -2396,6 +2432,12 @@ public class DacServiceImpl implements DacService {
                                     : null
                     )
                     .filter(Objects::nonNull)
+                    .map(alfId->{
+                        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
+                        reunionDocResponse.setRef(ref);
+                        reunionDocResponse.setAlfrescoId(alfId);
+                        return reunionDocResponse;
+                    })
                     .collect(Collectors.toSet());
 
             if (alfrescoIds.isEmpty()) {
@@ -2427,6 +2469,7 @@ public class DacServiceImpl implements DacService {
     public PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion) {
 
         PvResponse dto = new PvResponse();
+        ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
         Set<String> pvCpmp = new HashSet<>();
         Set<String> pvCncmpSpecialise = new HashSet<>();
         Set<String>pvCpcmpPermanant=new HashSet<>();
@@ -2450,7 +2493,19 @@ public class DacServiceImpl implements DacService {
 
 
             for (Reunion r : reunions) {
+                Calendar calendar = r.getReunionDate();
 
+                LocalDate localDate = LocalDate.of(
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH) + 1,
+                        calendar.get(Calendar.DAY_OF_MONTH)
+                );
+
+                String formattedDate = localDate.format(
+                        DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+                );
+                String ref=r.getCom().getAbreviation()+" "+formattedDate;
+                reunionDocResponse.setRef(ref);
                 String pvAlfrescoId = r.getProcessVerbal()
                         .getDocuments()
                         .stream()
@@ -2473,22 +2528,27 @@ public class DacServiceImpl implements DacService {
 
                         case "CPMP":
                             if ("CPMP".equals(reunionComType)&&pvCpmp.add(pvAlfrescoId)) {
-                                dto.getPvCPMP().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCPMP().add(reunionDocResponse);
                             }
                             if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
-                                dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPPermanente().add(reunionDocResponse);
                             }
                             break;
 
                         case "CNCMP-P":
                             if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
-                                dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPPermanente().add(reunionDocResponse);
                             }
                             if ("CNCMP-S".equals(reunionComType)) {
-                                dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPSpecialise().add(reunionDocResponse);
                             }
                             if ("CPMP".equals(reunionComType)&&pvCpmp.add(pvAlfrescoId)) {
-                                dto.getPvCPMP().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCPMP().add(reunionDocResponse);
                             }
                             break;
 
@@ -2496,10 +2556,12 @@ public class DacServiceImpl implements DacService {
                             // Your original condition is redundant inside this case, but keep it if you want:
                             if ("CNCMP-S".equals(reunionComType)&&pvCncmpSpecialise.add(pvAlfrescoId)
                                     && (userComTypes.contains("CNCMP-S") || userComTypes.contains("CNCMP-P"))) {
-                                dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPSpecialise().add(reunionDocResponse);
                             }
                             if ("CNCMP-P".equals(reunionComType)&&pvCpcmpPermanant.add(pvAlfrescoId)) {
-                                dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                                reunionDocResponse.setAlfrescoId(pvAlfrescoId);
+                                dto.getPvCNCMPPermanente().add(reunionDocResponse);
                             }
                             break;
 
@@ -2530,9 +2592,21 @@ public class DacServiceImpl implements DacService {
 
             if (reunionOpt.isEmpty())
                 continue;
+            ReunionDocResponse reunionDocResponse=new ReunionDocResponse();
 
             Reunion reunion = reunionOpt.get();
+            Calendar calendar = reunion.getReunionDate();
 
+            LocalDate localDate = LocalDate.of(
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH) + 1,
+        calendar.get(Calendar.DAY_OF_MONTH));
+
+            String formattedDate = localDate.format(
+                    DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+            );
+            String ref=reunion.getCom().getAbreviation()+" "+formattedDate;
+            reunionDocResponse.setRef(ref);
             String typeCom = reunion.getCom().getComType().getCode();
             log.info("EX: id={} type={} doc={} alfresco={} acId {}",
                     ex.getExtraitId(),
@@ -2546,13 +2620,15 @@ public class DacServiceImpl implements DacService {
 
                 String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
                 if (alfrescoId != null&&seenCpmp.add(alfrescoId)) {
-                    dto.getExtraitCPMP().add(alfrescoId);
+                    reunionDocResponse.setAlfrescoId(alfrescoId);
+                    dto.getExtraitCPMP().add(reunionDocResponse);
                 }
             }
             else if ("CNCMP-P".equals(typeCom)){
                 String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
                 if (alfrescoId != null&&seenPermanent.add(alfrescoId)) {
-                    dto.getExtraitCNCMPP().add(alfrescoId);
+                    reunionDocResponse.setAlfrescoId(alfrescoId);
+                    dto.getExtraitCNCMPP().add(reunionDocResponse);
                 }
             }
         }
