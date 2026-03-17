@@ -362,7 +362,7 @@ public class PpmServiceImpl implements PpmService {
         // Step 10: PV + Extrait rules (INSERTED HERE)
         populateVisiblePvs(ppm, userAcIds, userComIds);
         populateReunionArgumentsDoc(ppm);
-        Set<PpmAvisNoteRapporteurResponse> avis=avisNoteRapporteurs(ppmId,ppmVer,ppm.getComs().stream().map(Com::getId).collect(Collectors.toList()));
+        Set<PpmAvisNoteRapporteurResponse> avis=avisNoteRapporteurs(ppmId,ppm.getVersion(),ppm.getComs().stream().map(Com::getId).collect(Collectors.toList()));
         ppm.setAvis(avis);
         Ppm responsePpm = createFilteredResponsePpm(ppm);
         log.info("responsePpm   avis: {}", responsePpm.getAvis());
@@ -668,8 +668,8 @@ public class PpmServiceImpl implements PpmService {
             return null;
         }
 
-       List<PpmAvisNoteRapporteur> avis=ppmAvisNoteRapporteurService.findByPpm(ppmId,ppmVersion);
-        if(avis==null||avis.isEmpty()){
+       List<PpmAvisNoteRapporteur> avis=ppmAvisNoteRapporteurService.findByPpm(ppmId,ppmVersion).stream().filter(a->!a.getIsDeleted()).collect(Collectors.toList());
+        if(avis.isEmpty()){
             return null;
         }
         Set<PpmAvisNoteRapporteurResponse> avisNoteRapporteurs = avis.stream().map(avi->{
