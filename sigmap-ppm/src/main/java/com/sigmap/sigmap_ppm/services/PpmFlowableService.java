@@ -1583,7 +1583,17 @@ public class PpmFlowableService {
         try {
             String pid = task.getProcessInstanceId();
             Integer perId = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+            Integer speId = (Integer) runtimeService.getVariable(pid, "cncmpSpeComId");
+            Integer currentId = (Integer) runtimeService.getVariable(pid, "comId");
 
+            boolean onScsTask = !Boolean.TRUE.equals(commissionRequired)
+                    && perId != null && speId != null
+                    && currentId != null && currentId.equals(speId);
+
+            if (deferComIdAfterDecision == null && deferComIdAfterCompletion == null && onScsTask) {
+                deferComIdAfterCompletion = perId;
+                log.info("SCS→PER: OLD-PROCESS defer switch back to Permanent comId {} after completing SCS task", perId);
+            }
             if (Boolean.TRUE.equals(request.getValidate())
                     && Boolean.TRUE.equals(switchBackToPerAfterCompletion)
                     && deferComIdAfterDecision == null
