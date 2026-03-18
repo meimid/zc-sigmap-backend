@@ -123,7 +123,6 @@
 
     <userTask id="Activity_1j7xl5m"
               name="(CNCMP) Avis + Note Rapporteur commission spécialisée"
-              flowable:candidateGroups="CNCMP-SPE-RAPPORTEUR"
               flowable:formFieldValidation="true">
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false" />
@@ -148,6 +147,7 @@
               flowable:formFieldValidation="true">
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false" />
+        <flowable:formProperty id="commissionRequired" name="commissionRequired" type="boolean" default="true" />
         <flowable:formProperty id="switchBackToPerAfterCompletion" name="switchBackToPerAfterCompletion" type="boolean" default="true"/>
       </extensionElements>
       <incoming>Flow_0mjltft</incoming>
