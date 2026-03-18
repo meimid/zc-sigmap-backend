@@ -1590,10 +1590,6 @@ public class PpmFlowableService {
                     && perId != null && speId != null
                     && currentId != null && currentId.equals(speId);
 
-            if (deferComIdAfterDecision == null && deferComIdAfterCompletion == null && onScsTask) {
-                deferComIdAfterCompletion = perId;
-                log.info("SCS→PER: OLD-PROCESS defer switch back to Permanent comId {} after completing SCS task", perId);
-            }
             if (Boolean.TRUE.equals(request.getValidate())
                     && Boolean.TRUE.equals(switchBackToPerAfterCompletion)
                     && deferComIdAfterDecision == null
@@ -1601,6 +1597,9 @@ public class PpmFlowableService {
                     && perId != null) {
                 deferComIdAfterCompletion = perId;
                 log.info("SCS→PER: defer switch back to Permanent comId {} after completing task", perId);
+            } else if (deferComIdAfterDecision == null && deferComIdAfterCompletion == null && onScsTask) {
+                deferComIdAfterCompletion = perId;
+                log.info("SCS→PER: OLD-PROCESS defer switch back to Permanent comId {} after completing SCS task", perId);
             }
         } catch (Exception e) {
             log.warn("SCS→PER: failed to plan switch back: {}", e.getMessage());
