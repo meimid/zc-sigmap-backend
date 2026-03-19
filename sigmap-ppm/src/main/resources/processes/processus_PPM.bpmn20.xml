@@ -89,6 +89,7 @@
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false" />
         <flowable:formProperty id="commissionRequired" name="commissionRequired" type="boolean" default="true" />
+        <flowable:formProperty id="affectationRequired" name="affectationRequired" type="boolean" default="true" />
       </extensionElements>
       <incoming>SequenceFlow_1m4k4kk</incoming>
       <incoming>Flow_10ninyt</incoming>

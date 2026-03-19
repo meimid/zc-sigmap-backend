@@ -665,6 +665,7 @@ public class PpmFlowableService {
         Boolean meetingRequired = taskProperties.get("meetingRequired");
         Boolean assignRapporteur = taskProperties.get("assignRapporteur");
         Boolean switchBackToPerAfterCompletion = taskProperties.get("switchBackToPerAfterCompletion");
+        Boolean affectationRequired = taskProperties.get("affectationRequired");
 
         boolean fromMeeting = Boolean.TRUE.equals(request.getFromMeeting());
 
@@ -963,7 +964,12 @@ public class PpmFlowableService {
 
             // AC validation → next commission step ⇒ set CPMP of AC
             if (!Boolean.TRUE.equals(meetingRequired)
-                    && Boolean.TRUE.equals(nextCommissionRequired)
+                    && (
+                            // Nouveau process
+                            Boolean.TRUE.equals(nextCommissionRequired)
+                            ||
+                            // Ancien process
+                            Boolean.TRUE.equals(nextMeetingRequired))
                     && !Boolean.TRUE.equals(commissionRequired)
                     && !Boolean.TRUE.equals(assignRapporteur)
                     && (currentComIdForRouting == null || currentComIdForRouting == 0)) {
@@ -1222,10 +1228,14 @@ public class PpmFlowableService {
         }
 
         // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId required ---
+        boolean isAffectationTask =
+                Boolean.TRUE.equals(affectationRequired)           // nouveau process
+                        || "Task_0x68o40".equals(task.getTaskDefinitionKey()); // ancien process (instances en cours)
         if (Boolean.TRUE.equals(request.getValidate())
                 && Boolean.TRUE.equals(commissionRequired)
                 && !Boolean.TRUE.equals(meetingRequired)
-                && !Boolean.TRUE.equals(assignRapporteur)) {
+                && !Boolean.TRUE.equals(assignRapporteur)
+                && isAffectationTask) {
             Integer reqComId = request.getComId();
             if (reqComId == null) {
                 throw new MissingComIdException(
