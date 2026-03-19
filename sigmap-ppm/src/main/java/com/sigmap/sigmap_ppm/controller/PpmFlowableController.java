@@ -612,4 +612,16 @@ public class PpmFlowableController {
 
         return ResponseEntity.ok(response);
     }
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN')")
+    @PostMapping("/instances/{processInstanceId}/variables")
+    public ResponseEntity<?> addVariable(
+            @PathVariable String processInstanceId,
+            @RequestBody Map<String, Object> variable) {
+
+        String name = (String) variable.get("name");
+        Object value = variable.get("value");
+
+        runtimeService.setVariable(processInstanceId, name, value);
+        return ResponseEntity.ok("Variable ajoutée avec succès !");
+    }
 }
