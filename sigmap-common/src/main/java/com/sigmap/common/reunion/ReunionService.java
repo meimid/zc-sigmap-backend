@@ -64,7 +64,14 @@ public interface ReunionService {
     ProcessVerbalReunionExtrait injectExtraitForDossier(Integer reunionId, ProcessVerbalReunionExtraitRequest extraitRequest) throws IOException;
     Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunionId(Integer reunionId,Pageable pageable);
     Optional<String> findInterimParticipant(Integer reunionId);
+    List<Reunion> findAllByDacIdAndOptionalComId(Integer dacId, Integer comId, Specification<Reunion> specifications);
+    List<Reunion> findAllByDacIdList(Integer dacId,Specification<Reunion> specifications);
+    Optional<Reunion> findOneReunion(Specification<Reunion> specifications);
+    List<Reunion> findAllByDacIdListForAdminCentralAndSuperAdmin(Integer dacId,Specification<Reunion> specifications) ;
+    List<Reunion> findAllByDacIdListForUserCom(Integer dacId, String userId,Specification<Reunion> specifications);
+    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndDacId(Integer reunionId, Integer dacId) ;
+    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndDacIdForAdminCentralAndSuperAdmin(Integer reunionId, Integer dacId) ;
+    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndDacIdForUserCom(Integer reunionId, Integer dacId,String userId) ;
 
-Optional<Reunion> findOneReunion(Specification<Reunion> specifications);
 
 }

@@ -622,11 +622,6 @@ public class PpmFlowableService {
 
         // Get candidate group
         String candidateGroup = getCandidateGroup(task);
-        if (candidateGroup == null) {
-            TaskDTO errorResponse = new TaskDTO();
-            errorResponse.setStatus("Task does not have a candidate group");
-            return errorResponse;
-        }
 
         // Check user permissions
         if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
