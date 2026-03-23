@@ -7,6 +7,7 @@ import com.sigmap.common.dac.DacServiceImpl;
 import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.request.*;
 import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.response.DacDropListResponse;
 import com.sigmap.common.dac.response.DacResponce;
 import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
 import com.sigmap.common.dac_docs.DacDocsService;
@@ -14,6 +15,10 @@ import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs_copy.DynaDocsCopy;
 import com.sigmap.common.dyna_docs_copy.DynaDocsCopyRepository;
+import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.ppms.mappers.PpmMapper;
+import com.sigmap.common.ppms.request.PpmQuery;
+import com.sigmap.common.ppms.response.PpmDropListDto;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +26,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +38,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -553,5 +560,18 @@ public class DacController {
       return ResponseEntity.status(HttpStatus.NOT_FOUND)
               .body(Map.of("error", "DAC not found"));
     }
+  }
+
+  @GetMapping("/drop-list")
+  public ResponseEntity<List<DacDropListResponse>> findAllForWebsite(DacQuery query) {
+    Specification specification = query.toSpecification();
+    List<Dac> dacs = dacService.findAllDacs(specification);
+    List<DacDropListResponse> responses = dacs.stream().map(dac->{
+      DacDropListResponse response = new DacDropListResponse();
+      response.setId(dac.getDacId());
+      response.setRef(dac.getReference());
+      return response;})
+            .collect(Collectors.toList());
+    return ResponseEntity.ok(responses);
   }
 }

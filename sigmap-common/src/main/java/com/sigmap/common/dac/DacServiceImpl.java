@@ -2,6 +2,7 @@ package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.config.ModePassationType;
@@ -48,6 +49,7 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
+import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.model_dac.ModelDac;
 import com.sigmap.common.ppms.Ppm;
@@ -70,6 +72,9 @@ import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.SocieteDacID;
 import com.sigmap.common.societe_dac.SocieteDacRepository;
+import com.sigmap.common.user_com.UserCom;
+import com.sigmap.common.user_com.UserComRepository;
+import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.io.RandomAccessRead;
@@ -141,6 +146,7 @@ public class DacServiceImpl implements DacService {
     private final DynaDocsCopyServiceImpl dynaDocsCopyServiceImpl;
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
     private final CurrentUserService currentUserService;
+    private final UserComRepository userComRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String inputModifiedDocPath, String customDirPath) {
@@ -2630,5 +2636,42 @@ public class DacServiceImpl implements DacService {
         return dto;
     }
 
+    @Override
+    public List<Dac> findAllDacs(Specification<Dac> spec) {
+        boolean isSuperAdmin = Authentication.hasRole("SUPER_ADMIN");
+        boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
+
+        List<Dac> dacs = new ArrayList<>();
+        if (isAdminCentral || isSuperAdmin) {
+            dacs = findAllForSuperAdminAndAdminCentral(spec);
+        } else {
+            String userId = Authentication.getCurrentUserId().orElseThrow(() -> new UserIdRequiredException(""));
+            dacs = findAllForComUser(spec, userId);
+        }
+        return dacs;
+    }
+
+    @Override
+    public List<Dac> findAllForSuperAdminAndAdminCentral(Specification<Dac> spec) {
+        Specification<Dac> finalSpec = Specification.where(spec)
+                .and(DacSpecifications.isLatestVersion())
+                .and(Specification.not(DacSpecifications.BROUILLON()))
+                .and(DacSpecifications.isNotDeleted());
+        return dacRepository.findAll(finalSpec);
+    }
+
+    @Override
+    public List<Dac> findAllForComUser(Specification<Dac> spec, String userId) {
+        List<Integer> comIds = userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
+                .map(UserCom::getComId).collect(Collectors.toList());
+        Specification<Dac> finalSpec = Specification.where(spec)
+                .and(DacSpecifications.isLatestVersion())
+                .and(Specification.not(DacSpecifications.BROUILLON()))
+                .and(DacSpecifications.isNotDeleted());
+        return dacRepository.findAll(finalSpec).stream()
+                .filter(ppm -> ppm.getComs().stream().map(Com::getId).anyMatch(comIds::contains))
+                .collect(Collectors.toList());
+
+    }
 }
 

@@ -7,6 +7,8 @@ import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 import java.util.List;
 
@@ -157,4 +159,29 @@ public class DacSpecifications {
         );
     }
 
+    public static Specification<Dac> isLatestVersion() {
+        return (root, query, criteriaBuilder) -> {
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Dac> subRoot = subquery.from(Dac.class);
+            subquery.select(criteriaBuilder.max(subRoot.get("dacVer")))
+                    .where(criteriaBuilder.equal(subRoot.get("dacId"), root.get("dacId")),
+                            criteriaBuilder.equal(subRoot.get("isDeleted"), false));
+            return criteriaBuilder.equal(root.get("dacVer"), subquery);
+        };
+    }
+
+    public static Specification<Dac> BROUILLON() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("status"), "BROUILLON");
+    }
+
+    /**
+     * Creates a Specification to find entities that are not marked as deleted.
+     *
+     * @return A Specification for non-deleted entities.
+     */
+    public static Specification<Dac> isNotDeleted() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("isDeleted"), false);
+    }
 }
