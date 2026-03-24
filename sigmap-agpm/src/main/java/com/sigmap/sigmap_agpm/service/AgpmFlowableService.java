@@ -1070,7 +1070,9 @@ public class AgpmFlowableService {
     }
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<HistoricTaskDto> loadHistoricTasks(String processInstId) {
-        return historyService
+
+        // 1. Tâches terminées
+        List<HistoricTaskDto> historicTasks = historyService
                 .createHistoricTaskInstanceQuery()
                 .processInstanceId(processInstId)
                 .finished()
@@ -1080,16 +1082,65 @@ public class AgpmFlowableService {
                     List<Comment> comments = taskService.getTaskComments(task.getId());
                     return new HistoricTaskDto(task, comments);
                 })
-                .map(h -> {
-                    if (h.getAssignee() != null) {
-                        UserDTO user = keycloakAdminService.getUserById(h.getAssignee());
+                .map(this::resolveConcern)
+                .collect(Collectors.toList());
+
+        // 2. Tâches actives (courantes)
+        List<HistoricTaskDto> currentTasks = taskService
+                .createTaskQuery()
+                .processInstanceId(processInstId)
+                .list()
+                .stream()
+                .map(task -> {
+                    List<Comment> comments = taskService.getTaskComments(task.getId());
+                    HistoricTaskDto dto = new HistoricTaskDto(task, comments);
+
+                    // Résolution du concern directement ici avec accès à `task`
+                    if (task.getAssignee() != null) {
+                        UserDTO user = keycloakAdminService.getUserById(task.getAssignee());
                         if (user != null) {
-                            h.setConcern(user.getFirstName().concat(" ").concat(user.getLastName()));
+                            dto.setConcern(user.getFirstName() + " " + user.getLastName());
                         }
+                    } else {
+                        List<String> groups = taskService
+                                .getIdentityLinksForTask(task.getId())
+                                .stream()
+                                .filter(link -> "candidate".equals(link.getType())
+                                        && link.getGroupId() != null)
+                                .map(IdentityLink::getGroupId)
+                                .collect(Collectors.toList());
+
+                        dto.setConcern(groups.isEmpty()
+                                ? "Non affecté"
+                                : "Groupe : " + String.join(", ", groups));
                     }
-                    return h;
+
+                    return dto;
                 })
                 .collect(Collectors.toList());
+
+        // 3. Fusion et tri chronologique
+        List<HistoricTaskDto> result = new ArrayList<>(historicTasks);
+        result.addAll(currentTasks);
+        result.sort(Comparator.comparing(
+                HistoricTaskDto::getStartDate,
+                Comparator.nullsLast(Comparator.naturalOrder())
+        ));
+
+        return result;
+    }
+
+    // Utilisé uniquement pour les tâches historiques (assignee ou non affecté)
+    private HistoricTaskDto resolveConcern(HistoricTaskDto dto) {
+        if (dto.getAssignee() != null) {
+            UserDTO user = keycloakAdminService.getUserById(dto.getAssignee());
+            if (user != null) {
+                dto.setConcern(user.getFirstName() + " " + user.getLastName());
+            }
+        } else {
+            dto.setConcern("Non affecté");
+        }
+        return dto;
     }
 
     public byte[] generateModeleAgpm(Integer agpmId,Integer agpmVers, String signataire) throws Exception {
