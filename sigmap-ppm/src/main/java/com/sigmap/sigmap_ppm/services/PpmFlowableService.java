@@ -1496,7 +1496,12 @@ public class PpmFlowableService {
             varsToSet.put(processVariable, validateFlag);
         }
 
-        if (candidateGroup.contains("AC") && validateFlag != null && !"valide".equals(processVariable)) {
+
+        if (candidateGroup != null
+                && candidateGroup.contains("AC")
+                && validateFlag != null
+                && !"valide".equals(processVariable)) {
+
             varsToSet.put("valide", validateFlag);
         }
 
