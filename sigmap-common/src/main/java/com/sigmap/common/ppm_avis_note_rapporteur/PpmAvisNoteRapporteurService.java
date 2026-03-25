@@ -1,5 +1,6 @@
 package com.sigmap.common.ppm_avis_note_rapporteur;
 
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -54,4 +55,6 @@ public class PpmAvisNoteRapporteurService {
     public List<PpmAvisNoteRapporteur> findByTaskId(String taskId) {
         return repository.findByTaskId(taskId);
     }
+
+    public Optional<PpmAvisNoteRapporteur> findOne(Specification<PpmAvisNoteRapporteur> spec) {return repository.findOne(spec);}
 }
