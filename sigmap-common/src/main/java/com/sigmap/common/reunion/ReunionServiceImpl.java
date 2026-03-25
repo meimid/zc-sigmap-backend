@@ -1845,4 +1845,28 @@ public class ReunionServiceImpl implements ReunionService{
         return dto;    }
 
 
+
+    @Transactional
+    private void generateReunionObjetc(ReunionRequest request) throws PpmNotFound, AcNotFound, IOException, DocNotFound {
+
+        // Log fetched Reunion details
+
+        // Map current links, logging and ignoring invalid entries
+        Map<ReunionPpmId, ReunionPpm> currentLinks = new HashMap<>();
+
+
+
+        if (request.getReunionPpms() != null) {
+            Map<ReunionPpmId, ReunionPpmRequest> requestPpmMap = new HashMap<>();
+            for (ReunionPpmRequest ppmReq : request.getReunionPpms()) {
+                if (ppmReq.getId() == null || ppmReq.getVersion() == null) {
+                    throw new PpmIdNotFound("", null);
+                }
+                Ppm ppm = ppmService.findById(ppmReq.getId(), ppmReq.getVersion()).orElseThrow(() -> new PpmIdNotFound("", ppmReq.getId()));
+
+
+            }
+        }
+
+    }
 }

@@ -1,263 +1,96 @@
-name: Build Dev
+name: Build Prod
 
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+-T"
+  workflow_run:
+    workflows: ["Sonar Analysis staging"]
+    types: [completed]
+  workflow_dispatch:
 
 jobs:
-  build_paa:
-    name: Build PAA
+  prepare:
+    name: Prepare version
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      #      - name: Setup Java
-      #        uses:  actions/setup-java@v4
-      #        with:
-      #          distribution: 'temurin'
-      #          java-version: '17'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
 
-      #      - name: Build jar
-      #        working-directory: apps/api
-      #        run: mvn clean package -B
+      - id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          MVN_VER=$(mvn -q -f pom.xml help:evaluate -Dexpression=project.version -DforceStdout || true)
+          MVN_VER="$(echo -n "${MVN_VER}" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          if [[ -z "${MVN_VER}" || "${MVN_VER}" == *'${revision}'* || "${MVN_VER}" == *'[ERROR]'* ]]; then
+            MVN_VER="$(date -u +%Y%m%d%H%M).${GITHUB_SHA::9}"
+          fi
+          echo "version=${MVN_VER}" >> "$GITHUB_OUTPUT"
+          echo "Resolved VERSION=${MVN_VER}"
 
-      - name: Login to Docker Hub
+  build:
+    name: Build & Push (${{ matrix.svc.image }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      REGISTRY: registry-mtnima.gov.mr
+      NAMESPACE: sigmap
+    strategy:
+      fail-fast: false
+      matrix:
+        svc:
+          - { image: zc-sigmap-paa,       dockerfile: ./sigmap-paa/Dockerfile }
+          - { image: zc-sigmap-ppm,       dockerfile: ./sigmap-ppm/Dockerfile }
+          - { image: zc-sigmap-agpm,      dockerfile: ./sigmap-agpm/Dockerfile }
+          - { image: zc-sigmap-auth,      dockerfile: ./sigmap-auth/Dockerfile }
+          - { image: zc-sigmap-dac,       dockerfile: ./sigmap-dac/Dockerfile }
+          - { image: zc-sigmap-params,    dockerfile: ./sigmap-params/Dockerfile }
+          - { image: zc-sigmap-webmaster, dockerfile: ./sigmap-webmaster/Dockerfile }
+          - { image: zc-sigmap-website-auth, dockerfile: ./sigmap-website-auth/Dockerfile }
+          - { image: zc-sigmap-eclaircissement, dockerfile: ./sigmap-eclaircissement/Dockerfile }
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Check DEVOPS_PASSWORD presence
+        run: |
+          if [ -z "${DEVOPS_PASSWORD}" ]; then
+            echo "❌ DEVOPS_PASSWORD is EMPTY in this workflow"
+          else
+            echo "✅ DEVOPS_PASSWORD is set (length: ${#DEVOPS_PASSWORD})"
+          fi
+        env:
+          DEVOPS_PASSWORD: ${{ secrets.DEVOPS_PASSWORD }}
+      - name: Login to Nexus Registry
         uses: docker/login-action@v3
         with:
-          username: zedneycreative
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ${{ env.REGISTRY }}
+          username: devops_user
+          password: ${{ secrets.DEVOPS_PASSWORD }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push
+      - name: Debug VERSION
+        run: echo "VERSION=${VERSION}"
+
+      - name: Build and push ${{ matrix.svc.image }}
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./sigmap-paa/Dockerfile
+          file: ${{ matrix.svc.dockerfile }}
           push: true
-          tags: zedneycreative/zc-sigmap-paa:latest,zedneycreative/zc-sigmap-paa:${{ github.ref_name }}
-
-  build_ppm:
-    name: Build PPM
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      #      - name: Setup Java
-      #        uses:  actions/setup-java@v4
-      #        with:
-      #          distribution: 'temurin'
-      #          java-version: '17'
-
-      #      - name: Build jar
-      #        working-directory: apps/api
-      #        run: mvn clean package -B
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: zedneycreative
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./sigmap-ppm/Dockerfile
-          push: true
-          tags: zedneycreative/zc-sigmap-ppm:latest,zedneycreative/zc-sigmap-ppm:${{ github.ref_name }}
-
-  build_agpm:
-    name: Build AGPM
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      #      - name: Setup Java
-      #        uses:  actions/setup-java@v4
-      #        with:
-      #          distribution: 'temurin'
-      #          java-version: '17'
-
-      #      - name: Build jar
-      #        working-directory: apps/api
-      #        run: mvn clean package -B
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: zedneycreative
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./sigmap-agpm/Dockerfile
-          push: true
-          tags: zedneycreative/zc-sigmap-agpm:latest,zedneycreative/zc-sigmap-agpm:${{ github.ref_name }}
-
-  build_auth:
-    name: Build AUTH
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: zedneycreative
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./sigmap-auth/Dockerfile
-          push: true
-          tags: zedneycreative/zc-sigmap-auth:latest,zedneycreative/zc-sigmap-auth:${{ github.ref_name }}
-
-  build_dac:
-    name: Build DAC
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: zedneycreative
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./sigmap-dac/Dockerfile
-          push: true
-          tags: zedneycreative/zc-sigmap-dac:latest,zedneycreative/zc-sigmap-dac:${{ github.ref_name }}
-
-  build_params:
-    name: Build PARAMS
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      #      - name: Setup Java
-      #        uses:  actions/setup-java@v4
-      #        with:
-      #          distribution: 'temurin'
-      #          java-version: '17'
-
-      #      - name: Build jar
-      #        working-directory: apps/api
-      #        run: mvn clean package -B
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: zedneycreative
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./sigmap-params/Dockerfile
-          push: true
-          tags: zedneycreative/zc-sigmap-params:latest,zedneycreative/zc-sigmap-params:${{ github.ref_name }}
-
-  build_webmaster:
-    name: Build WEB
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: zedneycreative
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./sigmap-webmaster/Dockerfile
-          push: true
-          tags: zedneycreative/zc-sigmap-webmaster:latest,zedneycreative/zc-sigmap-webmaster:${{ github.ref_name }}
-
-  build_website_auth:
-    name: Build WEB AUTH
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: zedneycreative
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./sigmap-website-auth/Dockerfile
-          push: true
-          tags: zedneycreative/zc-sigmap-website-auth:latest,zedneycreative/zc-sigmap-website-auth:${{ github.ref_name }}
-
-  build_eclaircissement:
-    name: Build ECLAIRCISSEMENT
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: zedneycreative
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./sigmap-eclaircissement/Dockerfile
-          push: true
-          tags: zedneycreative/zc-sigmap-eclaircissement:latest,zedneycreative/zc-sigmap-eclaircissement:${{ github.ref_name }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ matrix.svc.image }}:${{ env.VERSION }}
