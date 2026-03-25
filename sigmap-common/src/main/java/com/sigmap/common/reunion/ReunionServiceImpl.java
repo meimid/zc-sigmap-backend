@@ -218,9 +218,11 @@ public class ReunionServiceImpl implements ReunionService{
         if(request.getEmplacement() != null) {
             reunion.setEmplacement(request.getEmplacement());
         }
-        if(request.getObject()!=null) {
-            reunion.setObject(request.getObject());
-        }
+      //  if(request.getObject()!=null) {
+        //    reunion.setObject(request.getObject());
+       // }
+        reunion.setObject( generateReunionObjetc(request));
+
         reunion.setStatus(ReunionStatus.BROUILLON);
         if(request.getNote() != null) {
             throw new NoteNotAllowedException("");
@@ -1847,26 +1849,31 @@ public class ReunionServiceImpl implements ReunionService{
 
 
     @Transactional
-    private void generateReunionObjetc(ReunionRequest request) throws PpmNotFound, AcNotFound, IOException, DocNotFound {
+    private String generateReunionObjetc(ReunionRequest request) throws PpmNotFound, AcNotFound, IOException, DocNotFound {
 
-        // Log fetched Reunion details
-
-        // Map current links, logging and ignoring invalid entries
-        Map<ReunionPpmId, ReunionPpm> currentLinks = new HashMap<>();
-
-
-
+        StringBuilder objectReunion = new StringBuilder();
         if (request.getReunionPpms() != null) {
-            Map<ReunionPpmId, ReunionPpmRequest> requestPpmMap = new HashMap<>();
+
+
+            String suject="";
             for (ReunionPpmRequest ppmReq : request.getReunionPpms()) {
                 if (ppmReq.getId() == null || ppmReq.getVersion() == null) {
                     throw new PpmIdNotFound("", null);
                 }
                 Ppm ppm = ppmService.findById(ppmReq.getId(), ppmReq.getVersion()).orElseThrow(() -> new PpmIdNotFound("", ppmReq.getId()));
+                int nbActualisation= ppm.getNbrActualisation();
+                suject="Examen du PPM "+ppm.getAnnee()+" "+ppm.getAc().getNom();
+                if(nbActualisation>0){
+                    suject+=" (ACTUALISATION N°" +ppm.getNbrActualisation() + ")";
+                }
+
+
+                objectReunion.append(suject).append(";\n");
 
 
             }
         }
+        return objectReunion.toString();
 
     }
 }
