@@ -22,11 +22,10 @@ public class HistoricTaskDto {
     private Date endDate;
     private String observation;
     private String concern;
-    private String comment;
     private boolean current;
 
     // Constructeur pour les tâches historiques (terminées)
-    public HistoricTaskDto(HistoricTaskInstance historicTaskInstance, List<Comment> taskComments) {
+    public HistoricTaskDto(HistoricTaskInstance historicTaskInstance) {
         this.id = historicTaskInstance.getId();
         this.name = historicTaskInstance.getName();
         this.assignee = historicTaskInstance.getAssignee();
@@ -34,13 +33,11 @@ public class HistoricTaskDto {
         this.endDate = historicTaskInstance.getEndTime();
         this.current = false;
 
-        if (taskComments != null && !taskComments.isEmpty()) {
-            this.comment = taskComments.get(taskComments.size() - 1).getFullMessage();
-        }
+
     }
 
     // Constructeur pour la tâche active (courante)
-    public HistoricTaskDto(Task task, List<Comment> taskComments) {
+    public HistoricTaskDto(Task task) {
         this.id = task.getId();
         this.name = task.getName();
         this.assignee = task.getAssignee();
@@ -48,8 +45,6 @@ public class HistoricTaskDto {
         this.endDate = null;
         this.current = true;
 
-        if (taskComments != null && !taskComments.isEmpty()) {
-            this.comment = taskComments.get(taskComments.size() - 1).getFullMessage();
-        }
+
     }
 }
