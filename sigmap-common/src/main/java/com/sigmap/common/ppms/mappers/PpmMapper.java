@@ -38,6 +38,8 @@ public interface PpmMapper {
     @Mapping(target = "actualise", source = "actualise")
     @Mapping(target = "nbrActualisation", source = "nbrActualisation")
     @Mapping(target = "etapeProcess", source = "etapeProcess")
+    @Mapping(target = "avis" , source = "avis")
+
     PpmResponse map(Ppm source);
 
     @Mapping(target = "id", source = "id")
@@ -71,6 +73,7 @@ public interface PpmMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "avis" , source = "avis")
     PpmResponseDto mapToDto(Ppm source);
 
     @Mapping(target = "id", source = "id")
