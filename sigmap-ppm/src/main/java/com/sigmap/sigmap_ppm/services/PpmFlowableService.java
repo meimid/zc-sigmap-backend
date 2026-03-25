@@ -1597,6 +1597,7 @@ public class PpmFlowableService {
             Integer currentId = (Integer) runtimeService.getVariable(pid, "comId");
 
             boolean onScsTask = !Boolean.TRUE.equals(commissionRequired)
+                    && !Boolean.TRUE.equals(assignRapporteur)
                     && perId != null && speId != null
                     && currentId != null && currentId.equals(speId);
 
