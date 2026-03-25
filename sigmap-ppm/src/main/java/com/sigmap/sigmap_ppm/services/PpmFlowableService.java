@@ -2359,8 +2359,7 @@ public class PpmFlowableService {
                 .list()
                 .stream()
                 .map(task -> {
-                    List<Comment> comments = taskService.getTaskComments(task.getId());
-                    return new HistoricTaskDto(task, comments);
+                    return new HistoricTaskDto(task);
                 })
                 .map(this::resolveConcern)
                 .collect(Collectors.toList());
@@ -2372,8 +2371,7 @@ public class PpmFlowableService {
                 .list()
                 .stream()
                 .map(task -> {
-                    List<Comment> comments = taskService.getTaskComments(task.getId());
-                    HistoricTaskDto dto = new HistoricTaskDto(task, comments);
+                    HistoricTaskDto dto = new HistoricTaskDto(task);
 
                     // Résolution du concern directement ici avec accès à `task`
                     if (task.getAssignee() != null) {
