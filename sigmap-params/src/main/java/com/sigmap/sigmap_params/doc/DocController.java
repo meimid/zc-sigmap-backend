@@ -285,4 +285,18 @@ public class DocController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/download/avis")
+    public ResponseEntity<DocumentResponseDTO> downloadAvisDocsDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadAvisDocsDocument(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
 }

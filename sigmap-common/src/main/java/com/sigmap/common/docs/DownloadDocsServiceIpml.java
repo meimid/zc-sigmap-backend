@@ -34,9 +34,15 @@ import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.ppm_avis_note_rapporteur.PpmAvisNoteRapporteur;
+import com.sigmap.common.ppm_avis_note_rapporteur.PpmAvisNoteRapporteurService;
+import com.sigmap.common.ppm_avis_note_rapporteur.PpmAvisNoteRapporteurSpecifications;
+import com.sigmap.common.ppm_avis_note_rapporteur.exception.PpmAvisNotNotFound;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.PpmSpecifications;
+import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
@@ -92,6 +98,10 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         private final ModelAgpmService modelAgpmService;
         private final ComRepository comRepository;
         private final DacDocsRepository dacDocsRepository;
+        private final ComService comService;
+        private final PpmAvisNoteRapporteurService ppmAvisNoteRapporteurService;
+    private final PpmRepository ppmRepository;
+
 
     @Override
     public byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, PaaNotFound {
@@ -740,5 +750,39 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         throw new AccessDeniedException("Access denied");
 
     }
+
+    @Override
+    public byte[] downloadAvisDocsDocument(String alfrescoId) throws IOException, DocsNotFoundException, PpmNotFound, AcNotFound {
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        PpmAvisNoteRapporteur avis =
+                ppmAvisNoteRapporteurService
+                        .findOne(Specification.where(PpmAvisNoteRapporteurSpecifications.docIdNote(doc.getId())))
+                        .orElseThrow(() -> new PpmAvisNotNotFound(""));
+        Ppm ppm= ppmService.findAll(Specification.where(PpmSpecifications.ppmId(avis.getPpmId()).and(PpmSpecifications.version(avis.getPpmVer())
+                .and(PpmSpecifications.deleted(false))))).stream().findFirst().orElseThrow(()->new PpmIdNotFound("",avis.getPpmId()));
+        List<Com> coms=ppm.getComs();
+
+        List<Integer> comIds = currentUserService.getCurrentUserComIds();
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
+
+
+        List<Integer> ppmComIds=coms.stream().filter(c->!c.getComType().getIsDeleted()
+                &&c.getComType().getCode().equals("CNCMP-S")).map(Com::getId).collect(Collectors.toList());
+        log.info("ppmComIds: {}",ppmComIds);
+        log.info("userComTypes: {}",userComTypes);
+        log.info("user comIds:{}",comIds);
+
+        if (ppmComIds.stream().anyMatch(comIds::contains)
+                &&userComTypes.stream().anyMatch("CNCMP-S"::equals)) {
+            return docsService.downloadDocument(alfrescoId);
+
+        }
+        throw new AccessDeniedException("Access denied");    }
 
 }

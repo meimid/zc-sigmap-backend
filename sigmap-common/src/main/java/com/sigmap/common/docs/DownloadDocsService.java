@@ -26,6 +26,7 @@ public interface DownloadDocsService {
     byte[] downloadDacArgumentDocumentForReunion(String alfrescoId) throws IOException, DocsNotFoundException;
     byte[] downloadComDocument(String alfrescoId) throws IOException, DocsNotFoundException;
     byte[] downloadDacDocsDocument(String alfrescoId) throws IOException, DocsNotFoundException ;
+    byte[] downloadAvisDocsDocument(String alfrescoId) throws IOException, DocsNotFoundException, PpmNotFound, AcNotFound;
 
 
     }

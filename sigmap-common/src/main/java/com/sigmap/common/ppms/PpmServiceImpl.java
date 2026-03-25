@@ -658,15 +658,25 @@ public class PpmServiceImpl implements PpmService {
         if(userComIds.stream().noneMatch(comIds::contains)){
             return null;
         }
+
+        Ppm ppm= findAll(Specification.where(PpmSpecifications.ppmId(ppmId).and(PpmSpecifications.version(ppmVersion)
+                .and(PpmSpecifications.deleted(false))))).stream().findFirst().orElseThrow(()->new PpmIdNotFound("",ppmId));
+        List<Com> coms=ppm.getComs();
         Set<String> userComTypes = comService.findAll(
                         Specification.where(ComSpecifications.deleted(false))
-                                .and(ComSpecifications.idIn(userComIds))
-                ).stream()
+                                .and(ComSpecifications.idIn(userComIds))).stream()
                 .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
                 .collect(Collectors.toSet());
-        if(!userComTypes.contains("CNCMP-S")){
+log.info("userComTypes: {}",userComTypes);
+        List<Integer> ppmComIds=coms.stream().filter(c->!c.getComType().getIsDeleted()
+                &&c.getComType().getCode().equals("CNCMP-S")).map(Com::getId).collect(Collectors.toList());
+        log.info("!userComTypes.contains(\"CNCMP-S\") {}",!userComTypes.contains("CNCMP-S"));
+        log.info("ppmComIds.stream().anyMatch(comIds::contains) {}",ppmComIds.stream().anyMatch(comIds::contains));
+        log.info("!userComTypes.contains(\"CNCMP-S\")&& !ppmComIds.stream().anyMatch(comIds::contains) {}",!userComTypes.contains("CNCMP-S")&& !ppmComIds.stream().anyMatch(comIds::contains));
+        if(!userComTypes.contains("CNCMP-S")&& !ppmComIds.stream().anyMatch(userComIds::contains)){
             return null;
         }
+
 
        List<PpmAvisNoteRapporteur> avis=ppmAvisNoteRapporteurService.findByPpm(ppmId,ppmVersion).stream().filter(a->!a.getIsDeleted()).collect(Collectors.toList());
         if(avis.isEmpty()){
