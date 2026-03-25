@@ -30,7 +30,9 @@ import com.sigmap.common.financement.FinancementId;
 import com.sigmap.common.financement.FinancementRepository;
 import com.sigmap.common.financement.request.FinancementRequest;
 
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
@@ -41,6 +43,9 @@ import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
 
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
+import com.sigmap.common.ppm_avis_note_rapporteur.PpmAvisNoteRapporteur;
+import com.sigmap.common.ppm_avis_note_rapporteur.PpmAvisNoteRapporteurService;
+import com.sigmap.common.ppm_avis_note_rapporteur.response.PpmAvisNoteRapporteurResponse;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
@@ -99,10 +104,13 @@ import jakarta.transaction.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.apache.commons.codec.digest.DigestUtils;
 
+import javax.print.Doc;
 import java.io.IOException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -142,6 +150,8 @@ public class PpmServiceImpl implements PpmService {
     private final ProcessVerbalReunionService processVerbalReunionService;
     private final ProcessVerbalReunionExtraitPpmService extraitPpmService;
     private final ReunionPpmDocRepository reunionPpmDocRepository;
+    private final PpmAvisNoteRapporteurService ppmAvisNoteRapporteurService;
+    private final KeycloakAdminService keycloakAdminService;
 
     /**
      * Constructor.
@@ -166,7 +176,12 @@ public class PpmServiceImpl implements PpmService {
                           ComService comService, ReunionRepository reunionRepository,
                           ProcessVerbalReunionExtraitService processVerbalReunionExtraitService,
                           SeuilGeneralService seuilGeneralService,
-                          SourceFinancementService sourceFinancementService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitPpmService extraitPpmService, ReunionPpmDocRepository reunionPpmDocRepository) {
+                          SourceFinancementService sourceFinancementService,
+                          ProcessVerbalReunionService processVerbalReunionService,
+                          ProcessVerbalReunionExtraitPpmService extraitPpmService,
+                          ReunionPpmDocRepository reunionPpmDocRepository,
+                          PpmAvisNoteRapporteurService ppmAvisNoteRapporteurService,
+                          KeycloakAdminService keycloakAdminService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -196,6 +211,8 @@ public class PpmServiceImpl implements PpmService {
         this.processVerbalReunionService = processVerbalReunionService;
         this.extraitPpmService = extraitPpmService;
         this.reunionPpmDocRepository = reunionPpmDocRepository;
+        this.ppmAvisNoteRapporteurService = ppmAvisNoteRapporteurService;
+        this.keycloakAdminService = keycloakAdminService;
     }
 
     @Override
@@ -345,8 +362,10 @@ public class PpmServiceImpl implements PpmService {
         // Step 10: PV + Extrait rules (INSERTED HERE)
         populateVisiblePvs(ppm, userAcIds, userComIds);
         populateReunionArgumentsDoc(ppm);
-
+        Set<PpmAvisNoteRapporteurResponse> avis=avisNoteRapporteurs(ppmId,ppm.getVersion(),ppm.getComs().stream().map(Com::getId).collect(Collectors.toList()));
+        ppm.setAvis(avis);
         Ppm responsePpm = createFilteredResponsePpm(ppm);
+        log.info("responsePpm   avis: {}", responsePpm.getAvis());
 
         return Optional.ofNullable(responsePpm);
     }
@@ -400,6 +419,9 @@ public class PpmServiceImpl implements PpmService {
             ppm.setDocumentCPMP(reunionArgumentDocuments.getDocumentCPMP());
             ppm.setDocumentCNCMPPermanente(reunionArgumentDocuments.getDocumentCNCMPPermanente());
             ppm.setDocumentCNCMPSpecialisee(reunionArgumentDocuments.getDocumentCNCMPSpecialise());
+
+
+
 
 
 
@@ -630,6 +652,72 @@ public class PpmServiceImpl implements PpmService {
         return dto;
     }
 
+    @Override
+    public Set<PpmAvisNoteRapporteurResponse> avisNoteRapporteurs(Integer ppmId, Integer ppmVersion, List<Integer> comIds) {
+        List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+        if(userComIds.stream().noneMatch(comIds::contains)){
+            return null;
+        }
+
+        Ppm ppm= findAll(Specification.where(PpmSpecifications.ppmId(ppmId).and(PpmSpecifications.version(ppmVersion)
+                .and(PpmSpecifications.deleted(false))))).stream().findFirst().orElseThrow(()->new PpmIdNotFound("",ppmId));
+        List<Com> coms=ppm.getComs();
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(userComIds))).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
+log.info("userComTypes: {}",userComTypes);
+        List<Integer> ppmComIds=coms.stream().filter(c->!c.getComType().getIsDeleted()
+                &&c.getComType().getCode().equals("CNCMP-S")).map(Com::getId).collect(Collectors.toList());
+        log.info("!userComTypes.contains(\"CNCMP-S\") {}",!userComTypes.contains("CNCMP-S"));
+        log.info("ppmComIds.stream().anyMatch(comIds::contains) {}",ppmComIds.stream().anyMatch(comIds::contains));
+        log.info("!userComTypes.contains(\"CNCMP-S\")&& !ppmComIds.stream().anyMatch(comIds::contains) {}",!userComTypes.contains("CNCMP-S")&& !ppmComIds.stream().anyMatch(comIds::contains));
+        if(!userComTypes.contains("CNCMP-S")&& !ppmComIds.stream().anyMatch(userComIds::contains)){
+            return null;
+        }
+
+
+       List<PpmAvisNoteRapporteur> avis=ppmAvisNoteRapporteurService.findByPpm(ppmId,ppmVersion).stream().filter(a->!a.getIsDeleted()).collect(Collectors.toList());
+        if(avis.isEmpty()){
+            return null;
+        }
+        Set<PpmAvisNoteRapporteurResponse> avisNoteRapporteurs = avis.stream().map(avi->{
+            PpmAvisNoteRapporteurResponse avisNoteRapporteur = new PpmAvisNoteRapporteurResponse();
+            if(avi.getAvis()!=null){
+                avisNoteRapporteur.setAvis(avi.getAvis());
+            }
+            if(avi.getDocIdNote()!=null){
+                Docs doc=docsService.findById(avi.getDocIdNote());
+                avisNoteRapporteur.setAlfrescoId(doc.getAlfresco_id());
+            }
+            UserDTO userDto=keycloakAdminService.getUserById(avi.getRapporteurUserId());
+            String userFullName=userDto.getFirstName() + " " + userDto.getLastName();
+            avisNoteRapporteur.setUser(userFullName);
+            Calendar calendar = avi.getCreatedAt();
+
+            LocalDateTime createdTime = LocalDateTime.of(
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH) + 1,
+                    calendar.get(Calendar.DAY_OF_MONTH),
+                    calendar.get(Calendar.HOUR_OF_DAY),
+                    calendar.get(Calendar.MINUTE),
+                    calendar.get(Calendar.SECOND)
+            );
+            String formattedDate = createdTime.format(
+                    DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.FRENCH)
+            );
+            avisNoteRapporteur.setCreatedAt(formattedDate);
+
+            log.info("avisNoteRapporteur={}", avisNoteRapporteur);
+
+            return avisNoteRapporteur;
+
+        }).collect(Collectors.toSet());
+
+
+        return avisNoteRapporteurs;
+    }
 
 
     @Override
@@ -739,6 +827,7 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setDocumentCPMP(ppm.getDocumentCPMP());
         filteredPpm.setDocumentCNCMPPermanente(ppm.getDocumentCNCMPPermanente());
         filteredPpm.setDocumentCNCMPSpecialisee(ppm.getDocumentCNCMPSpecialisee());
+        filteredPpm.setAvis(ppm.getAvis());
 
         if (ppm.getDocs() != null) {
             List<Docs> nonDeletedDocs = ppm.getDocs().stream()

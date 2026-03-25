@@ -1,13 +1,14 @@
 package com.sigmap.common.ppm_avis_note_rapporteur;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PpmAvisNoteRapporteurRepository extends JpaRepository<PpmAvisNoteRapporteur, Integer> {
+public interface PpmAvisNoteRapporteurRepository extends JpaRepository<PpmAvisNoteRapporteur, Integer>, JpaSpecificationExecutor<PpmAvisNoteRapporteur> {
 
     List<PpmAvisNoteRapporteur> findByPpmIdAndPpmVer(Integer ppmId, Integer ppmVer);
 

@@ -2,6 +2,7 @@ package com.sigmap.common.ppms.response;
 
 import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.ppm_avis_note_rapporteur.response.PpmAvisNoteRapporteurResponse;
 import com.sigmap.common.docs.Response.ReunionDocResponse;
 import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.common.ref_params.RefParam;
@@ -34,6 +35,7 @@ public class PpmResponseDto {
     private Boolean actualise;
     private Integer nbrActualisation;
     private String etapeProcess;
+    private Set<PpmAvisNoteRapporteurResponse> avis =new HashSet<>();
     private List<ReunionDocResponse> pvCpmp;
     private List<ReunionDocResponse> pvCncmpPermanente;
     private List<ReunionDocResponse> pvCncmpSpecialisee;
