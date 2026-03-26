@@ -1866,9 +1866,9 @@ public class ReunionServiceImpl implements ReunionService{
                 if(nbActualisation>0){
                     suject+=" (ACTUALISATION N°" +ppm.getNbrActualisation() + ")";
                 }
-
-
-                objectReunion.append(suject).append(";\n");
+                objectReunion.append("<p>")
+                        .append(suject)
+                        .append(";</p>");
 
 
             }
