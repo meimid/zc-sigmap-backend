@@ -57,6 +57,8 @@ public class PaaWebsiteResponse {
         if(paa.getNom() != null) {
             this.code=paa.getNom();
         }
+
+        this.code=paa.getRefPaa();
       //  this.code = codeBuilder.toString();
 
         List<Realisation> sourceRealisations = paa.getRealisations();
