@@ -30,6 +30,7 @@ public class PaaWebsiteResponse {
     private String logo;
     private DocsResponseWebsiteDTO doc;
     private Integer acId;
+    private Integer paa_ver;
 
     public PaaWebsiteResponse(Paa paa) {
         // --- Direct Mappings ---
@@ -57,8 +58,8 @@ public class PaaWebsiteResponse {
         if(paa.getNom() != null) {
             this.code=paa.getNom();
         }
-
-        this.code=paa.getRefPaa();
+        this.code=paa.getRef();
+        this.paa_ver = paa.getVersion();
       //  this.code = codeBuilder.toString();
 
         List<Realisation> sourceRealisations = paa.getRealisations();

@@ -36,6 +36,9 @@ public class PpmWebsiteResponse implements Serializable {
     private String logo;
     private Integer acId;
 
+    private Integer verssion_ppm;
+
+
 
     public PpmWebsiteResponse(Ppm ppm) {
         // --- Direct Mappings ---
@@ -75,6 +78,7 @@ public class PpmWebsiteResponse implements Serializable {
         if(ppm.getRef() != null) {
             this.code = ppm.getRef();
         }
+        this.verssion_ppm = ppm.getVersion();
 
         List<Realisation> sourceRealisations = ppm.getRealisations();
         if (sourceRealisations == null) {
