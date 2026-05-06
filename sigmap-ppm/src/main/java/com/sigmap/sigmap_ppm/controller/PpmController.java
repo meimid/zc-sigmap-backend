@@ -94,7 +94,7 @@ public class PpmController {
     @Autowired
     private HistoryService historyService;
     private final PpmService ppmService;
-   
+
     private final Logger logger = LoggerFactory.getLogger(PpmController.class);
 
     public PpmController(PpmService ppmService) {

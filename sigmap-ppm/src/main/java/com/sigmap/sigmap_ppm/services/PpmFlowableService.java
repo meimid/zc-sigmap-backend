@@ -65,6 +65,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.io.ByteArrayOutputStream;
 
 @Service
 @Slf4j
@@ -2605,6 +2606,51 @@ public class PpmFlowableService {
         }
     }
 
+
+    public byte[] generateModelePpmXlsx(Integer ppmId, Integer ppmVers, String signataire) throws Exception {
+        try (InputStream mainReportStream = getClass().getClassLoader().getResourceAsStream("modele/ppm.jasper");
+             Connection conn = dataSource.getConnection();
+             ByteArrayOutputStream xlsReport = new ByteArrayOutputStream()) {
+
+            if (mainReportStream == null) {
+                throw new FileNotFoundException("Fichier ppm.jasper introuvable !");
+            }
+
+            Map<String, Object> parametres = new HashMap<>();
+            parametres.put("ppm_id", ppmId);
+            parametres.put("ppm_ver", ppmVers);
+            parametres.put("nom", signataire);
+            parametres.put("REPORT_CONNECTION", conn);
+
+            JasperPrint jasperPrint = JasperFillManager.fillReport(mainReportStream, parametres, conn);
+
+            // Export XLSX
+            JRXlsxExporter exporter = new JRXlsxExporter();
+            exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+            exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(xlsReport));
+
+            SimpleXlsxReportConfiguration config = new SimpleXlsxReportConfiguration();
+
+            // Options importantes pour un Excel “propre”
+            config.setOnePagePerSheet(false);           // évite une feuille par page
+            config.setRemoveEmptySpaceBetweenRows(true);
+            config.setRemoveEmptySpaceBetweenColumns(true);
+            config.setDetectCellType(true);             // nombres => nombres, dates => dates (quand possible)
+            config.setWhitePageBackground(false);
+            config.setIgnoreGraphics(false);            // mets true si tu veux ignorer images/graphique
+            config.setCollapseRowSpan(false);
+
+            exporter.setConfiguration(config);
+            exporter.exportReport();
+
+            return xlsReport.toByteArray();
+
+        } catch (JRException e) {
+            throw new RuntimeException("Erreur lors de la génération XLSX : " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur inattendue lors de la génération XLSX : " + e.getMessage(), e);
+        }
+    }
 
     public byte[] generateModelePpmXlsx(Integer ppmId, Integer ppmVers, String signataire) throws Exception {
         try (InputStream mainReportStream = getClass().getClassLoader().getResourceAsStream("modele/ppm.jasper");
