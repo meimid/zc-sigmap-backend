@@ -110,7 +110,7 @@ public class PpmFlowableController {
     /**
      * Retrieves all active tasks for the tenant.
      *
-     * @return ResponseEntity with TaskListResponseDTO
+     * @return ResponseEntity with TaskListResponseDTO2
      */
     @GetMapping("/tasks")
     public ResponseEntity<TaskListResponseDTO> getCurrentTasks() {

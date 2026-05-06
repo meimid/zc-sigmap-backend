@@ -66,6 +66,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+
+
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
@@ -92,7 +94,7 @@ public class PpmController {
     @Autowired
     private HistoryService historyService;
     private final PpmService ppmService;
-
+   
     private final Logger logger = LoggerFactory.getLogger(PpmController.class);
 
     public PpmController(PpmService ppmService) {
@@ -1529,5 +1531,28 @@ public class PpmController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+
+    @GetMapping("/xlsx/{ppmId}")
+    public ResponseEntity<byte[]> exportPpmXlsx(
+            @PathVariable Integer ppmId,
+            @RequestParam(required = false) Integer version
+    ) throws Exception {
+        Ppm ppm = ppmService.findByIdPpm(ppmId, version)
+                .orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found with ID: " + ppmId));
+
+        Integer ppmVersion = ppm.getVersion();
+
+        byte[] bytes = flowableService.generateModelePpmXlsx(ppmId, ppmVersion, "");
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=PPM_" + ppmId + "_v" + ppmVersion + ".xlsx")
+                .contentType(org.springframework.http.MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ))
+                .body(bytes);
+    }
+
+
 
 }
