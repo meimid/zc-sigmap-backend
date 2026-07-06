@@ -78,8 +78,16 @@ public class PaaController {
     /**
      * Initialize collections in binding process to avoid "Cannot get element with index 0 from Collection of size 0" errors
      */
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
+        // This allows Spring to automatically grow lists when binding
+        // For example, if binding to realisations[256] and list has size 0,
+        // Spring will add null elements until index 256 is valid
+        binder.setAutoGrowNestedPaths(true);
+        binder.setAutoGrowCollectionLimit(1000); // Max 1000 elements
+
+        // Keep existing Set editor
         binder.registerCustomEditor(Set.class, new CustomCollectionEditor(Set.class) {
             @Override
             protected Object convertElement(Object element) {
