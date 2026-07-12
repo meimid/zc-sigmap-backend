@@ -33,6 +33,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -71,6 +72,19 @@ public class PaaFlowableController {
 
     private final Logger log = LoggerFactory.getLogger(PaaFlowableController.class);
 
+
+
+
+    /**
+     * Initialize binding to handle large collections
+     */
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        // Enable auto-growing of collections to handle realisations[256] and beyond
+        binder.setAutoGrowNestedPaths(true);
+        binder.setAutoGrowCollectionLimit(2000); // Support up to 2000 elements
+        log.info("Initialized WebDataBinder with auto-grow for collections");
+    }
     /**
      * Starts a Flowable process instance for a Paa entity using its ID.
      * Automatically retrieves the latest version of the Paa entity.
