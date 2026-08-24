@@ -10,7 +10,7 @@ jobs:
   prepare:
     name: Prepare version
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     outputs:
       version: ${{ steps.ver.outputs.version }}
     steps:
