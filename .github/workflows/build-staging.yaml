@@ -1,9 +1,9 @@
 name: Build Prod
 
 on:
-  workflow_run:
-    workflows: ["Sonar Analysis staging"]
-    types: [completed]
+  push:
+    branches:
+      - staging
   workflow_dispatch:
 
 jobs:
