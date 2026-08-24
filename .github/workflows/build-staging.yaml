@@ -1,16 +1,16 @@
 name: Build Prod
 
 on:
-  push:
-    branches:
-      - staging
+  workflow_run:
+    workflows: ["Sonar Analysis staging"]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
   prepare:
     name: Prepare version
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     outputs:
       version: ${{ steps.ver.outputs.version }}
     steps:
