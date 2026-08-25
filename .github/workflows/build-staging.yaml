@@ -1,22 +1,22 @@
-name: Build Prod
+name: Build PProd
 
 on:
-  workflow_run:
-    workflows: ["Sonar Analysis staging"]
-    types: [completed]
+  push:
+    branches:
+      - staging
   workflow_dispatch:
 
 jobs:
   prepare:
     name: Prepare version
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
     outputs:
       version: ${{ steps.ver.outputs.version }}
+
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -24,55 +24,106 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - id: ver
+      - name: Read Maven version
+        id: ver
         shell: bash
         run: |
           set -euo pipefail
-          MVN_VER=$(mvn -q -f pom.xml help:evaluate -Dexpression=project.version -DforceStdout || true)
-          MVN_VER="$(echo -n "${MVN_VER}" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-          if [[ -z "${MVN_VER}" || "${MVN_VER}" == *'${revision}'* || "${MVN_VER}" == *'[ERROR]'* ]]; then
-            MVN_VER="$(date -u +%Y%m%d%H%M).${GITHUB_SHA::9}"
+
+          MVN_VER="$(
+            mvn -q \
+              -f pom.xml \
+              help:evaluate \
+              -Dexpression=project.version \
+              -DforceStdout
+          )"
+
+          MVN_VER="$(
+            printf '%s' "${MVN_VER}" |
+              tr -d '\r' |
+              sed \
+                -e 's/^[[:space:]]*//' \
+                -e 's/[[:space:]]*$//'
+          )"
+
+          if [[ -z "${MVN_VER}" ]]; then
+            echo "Maven project version is empty"
+            exit 1
           fi
-          echo "version=${MVN_VER}" >> "$GITHUB_OUTPUT"
+
+          if [[ "${MVN_VER}" == *'${revision}'* ]]; then
+            echo "Maven version was not resolved: ${MVN_VER}"
+            exit 1
+          fi
+
+          if [[ "${MVN_VER}" == *'[ERROR]'* ]]; then
+            echo "Maven returned an error: ${MVN_VER}"
+            exit 1
+          fi
+
+          echo "version=${MVN_VER}" >> "${GITHUB_OUTPUT}"
           echo "Resolved VERSION=${MVN_VER}"
 
   build:
     name: Build & Push (${{ matrix.svc.image }})
     needs: prepare
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
       REGISTRY: registry-mtnima.gov.mr
       NAMESPACE: sigmap
+
     strategy:
       fail-fast: false
       matrix:
         svc:
-          - { image: zc-sigmap-paa,       dockerfile: ./sigmap-paa/Dockerfile }
-          - { image: zc-sigmap-ppm,       dockerfile: ./sigmap-ppm/Dockerfile }
-          - { image: zc-sigmap-agpm,      dockerfile: ./sigmap-agpm/Dockerfile }
-          - { image: zc-sigmap-auth,      dockerfile: ./sigmap-auth/Dockerfile }
-          - { image: zc-sigmap-dac,       dockerfile: ./sigmap-dac/Dockerfile }
-          - { image: zc-sigmap-params,    dockerfile: ./sigmap-params/Dockerfile }
-          - { image: zc-sigmap-webmaster, dockerfile: ./sigmap-webmaster/Dockerfile }
-          - { image: zc-sigmap-website-auth, dockerfile: ./sigmap-website-auth/Dockerfile }
-          - { image: zc-sigmap-eclaircissement, dockerfile: ./sigmap-eclaircissement/Dockerfile }
+          - image: zc-sigmap-paa
+            dockerfile: ./sigmap-paa/Dockerfile
+
+          - image: zc-sigmap-ppm
+            dockerfile: ./sigmap-ppm/Dockerfile
+
+          - image: zc-sigmap-agpm
+            dockerfile: ./sigmap-agpm/Dockerfile
+
+          - image: zc-sigmap-auth
+            dockerfile: ./sigmap-auth/Dockerfile
+
+          - image: zc-sigmap-dac
+            dockerfile: ./sigmap-dac/Dockerfile
+
+          - image: zc-sigmap-params
+            dockerfile: ./sigmap-params/Dockerfile
+
+          - image: zc-sigmap-webmaster
+            dockerfile: ./sigmap-webmaster/Dockerfile
+
+          - image: zc-sigmap-website-auth
+            dockerfile: ./sigmap-website-auth/Dockerfile
+
+          - image: zc-sigmap-eclaircissement
+            dockerfile: ./sigmap-eclaircissement/Dockerfile
+
+          - image: zc-sigmap-report
+            dockerfile: ./sigmap-report/Dockerfile
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Check DEVOPS_PASSWORD presence
-        run: |
-          if [ -z "${DEVOPS_PASSWORD}" ]; then
-            echo "❌ DEVOPS_PASSWORD is EMPTY in this workflow"
-          else
-            echo "✅ DEVOPS_PASSWORD is set (length: ${#DEVOPS_PASSWORD})"
-          fi
+        shell: bash
         env:
           DEVOPS_PASSWORD: ${{ secrets.DEVOPS_PASSWORD }}
+        run: |
+          if [[ -z "${DEVOPS_PASSWORD}" ]]; then
+            echo "DEVOPS_PASSWORD is empty"
+            exit 1
+          fi
+
+          echo "DEVOPS_PASSWORD is configured"
+
       - name: Login to Nexus Registry
         uses: docker/login-action@v3
         with:
@@ -83,7 +134,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Debug VERSION
+      - name: Debug version
         run: echo "VERSION=${VERSION}"
 
       - name: Build and push ${{ matrix.svc.image }}
