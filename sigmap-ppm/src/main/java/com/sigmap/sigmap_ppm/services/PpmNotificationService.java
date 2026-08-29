@@ -71,7 +71,7 @@ public class PpmNotificationService {
         try {
             return keycloakAdminService.getBasicUserById(cpmp.getResponsableId());
         } catch (Exception e) {
-            log.warn("[WHATSAPP] Impossible de récupérer le président de la CPMP {}: {}",
+            log.warn("[WHATSAPP] Impossible de récupérer le président de la commission {}: {}",
                     cpmp.getId(), e.getMessage());
             return null;
         }
@@ -88,6 +88,20 @@ public class PpmNotificationService {
         if (rawDecision == null) return false;
         String decision = rawDecision.trim().toUpperCase();
         return "REPORT".equals(decision) || "COND_APPROVE".equals(decision);
+    }
+
+    private void notifyCommissionPresident(Com commission, String defaultRecipientName,
+                                           String senderName, String reference,
+                                           String decision, String motif) {
+        UserDTO president = safeCpmpPresident(commission);
+        whatsAppNotificationService.sendDecisionNotification(
+                president != null ? president.getMobile() : null,
+                userName(president, defaultRecipientName),
+                senderName,
+                reference,
+                decision,
+                motif
+        );
     }
 
     private String extractReunionDate(Reunion reunion) {
@@ -134,6 +148,30 @@ public class PpmNotificationService {
         return motif.trim();
     }
 
+    /** AC -> CPMP. Best effort: absence de président/mobile ou erreur Meta ne bloque jamais le workflow. */
+    public void notifyCpmpAfterAcSubmission(Integer ppmId, Integer ppmVer) {
+        try {
+            Ppm ppm = ppmRepository.findById(new CompositeId(ppmId, ppmVer))
+                    .orElseThrow(() -> new PpmNotFound("PPM not found", List.of(ppmId), List.of(ppmVer)));
+            Integer cpmpId = acServiceImpl.getComIdByAcId(ppm.getAc().getId());
+            Com cpmp = cpmpId != null ? comRepository.findById(cpmpId).orElse(null) : null;
+            String acName = ppm.getAc() != null && ppm.getAc().getNom() != null
+                    ? ppm.getAc().getNom() : "Autorité contractante";
+
+            notifyCommissionPresident(
+                    cpmp,
+                    "Président de la CPMP",
+                    acName,
+                    ppm.getRef(),
+                    "Dossier transmis au CPMP",
+                    "Le PPM a été validé et transmis par l'autorité contractante."
+            );
+        } catch (Exception e) {
+            log.warn("[WHATSAPP] Échec non bloquant AC→CPMP pour PPM {}-{}: {}",
+                    ppmId, ppmVer, e.getMessage());
+        }
+    }
+
 
 
     public void notifyAcAfterCpmpDecision(Integer ppmId, Integer ppmVer) throws PpmNotFound {
@@ -159,15 +197,30 @@ public class PpmNotificationService {
             String decision = normalizeDecisionCpmp(rp != null ? rp.getDecision() : null);
             String motif = normalizeMotif(rp != null ? rp.getObservation() : null);
 
-            // WhatsApp est indépendant de l'e-mail. Numéro AC absent => aucun envoi.
-            whatsAppNotificationService.sendDecisionNotification(
-                    safeAcPhone(ppm),
-                    ppm.getAc() != null ? ppm.getAc().getNom() : null,
-                    cpmpName,
-                    ppm.getRef(),
-                    decision,
-                    motif
-            );
+            // CPMP approuve => transmission à la CNCMP. Sinon => retour à l'AC.
+            String rawDecision = rp != null ? rp.getDecision() : null;
+            if ("APPROVE".equalsIgnoreCase(rawDecision)
+                    || "VALIDATE".equalsIgnoreCase(rawDecision)
+                    || "TRUE".equalsIgnoreCase(rawDecision)) {
+                Com cncmp = comServiceImpl.findCNCMPP();
+                notifyCommissionPresident(
+                        cncmp,
+                        "Président de la CNCMP",
+                        cpmpName,
+                        ppm.getRef(),
+                        decision,
+                        motif
+                );
+            } else {
+                whatsAppNotificationService.sendDecisionNotification(
+                        safeAcPhone(ppm),
+                        ppm.getAc() != null ? ppm.getAc().getNom() : null,
+                        cpmpName,
+                        ppm.getRef(),
+                        decision,
+                        motif
+                );
+            }
 
             // ---- EMAIL ----
             if (acEmail == null || acEmail.isBlank()) {
@@ -219,10 +272,9 @@ public class PpmNotificationService {
 
             String rawDecision = rp != null ? rp.getDecision() : null;
             if (isReturnedToCpmp(rawDecision)) {
-                UserDTO president = safeCpmpPresident(cpmp);
-                whatsAppNotificationService.sendDecisionNotification(
-                        president != null ? president.getMobile() : null,
-                        userName(president, "Président de la CPMP"),
+                notifyCommissionPresident(
+                        cpmp,
+                        "Président de la CPMP",
                         cncmpName,
                         ppm.getRef(),
                         decision,
@@ -295,6 +347,14 @@ public class PpmNotificationService {
             String decision = normalizeDecision(rp != null ? rp.getDecision() : null);
             String motif = normalizeMotif(rp != null ? rp.getObservation() : null);
 
+            notifyCommissionPresident(
+                    cncmp,
+                    "Président de la CNCMP",
+                    scsName,
+                    ppm.getRef(),
+                    decision,
+                    motif
+            );
 
             // ---- EMAIL ----
             mailService.sendCommissionDecisionNotificationEmail(

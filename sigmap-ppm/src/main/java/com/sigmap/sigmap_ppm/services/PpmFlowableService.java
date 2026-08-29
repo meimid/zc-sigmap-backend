@@ -116,6 +116,8 @@ public class PpmFlowableService {
     private PpmAvisNoteRapporteurService ppmAvisNoteRapporteurService;
     @Autowired
     private UserComRepository userComRepository;
+    @Autowired
+    private PpmNotificationService ppmNotificationService;
 
 
     /* ======================= small helpers ======================= */
@@ -1723,6 +1725,15 @@ public class PpmFlowableService {
         }
         // Complete task
         taskService.complete(taskId, varsToSet);
+
+        // AC -> CPMP: notifier à chaque validation/transmission, y compris pour
+        // les instances Flowable déjà démarrées avant ce déploiement.
+        if ("Activity_0m03i99".equals(task.getTaskDefinitionKey())
+                && Boolean.TRUE.equals(request.getValidate())
+                && !Boolean.TRUE.equals(varsToSet.get("isCondApprove"))
+                && !Boolean.TRUE.equals(processVariables.get("isCondApprove"))) {
+            ppmNotificationService.notifyCpmpAfterAcSubmission(ppmId, ppmVer);
+        }
 
         if (Boolean.TRUE.equals(assignRapporteur) && Boolean.TRUE.equals(request.getValidate())) {
             assignNextTaskToUser(task.getProcessInstanceId(), request.getAssigneeUserId());
