@@ -117,7 +117,10 @@ public class WhatsAppNotificationService {
     private String normalizePhone(String phone) {
         if (isBlank(phone)) return null;
         String normalized = phone.trim().replaceAll("[^0-9]", "");
-        return normalized.isBlank() ? null : normalized;
+        if (normalized.isBlank()) return null;
+        if (normalized.length() == 8) return "222" + normalized;
+        if (normalized.startsWith("00")) return normalized.substring(2);
+        return normalized;
     }
 
     private String valueOrDefault(String value, String defaultValue) {

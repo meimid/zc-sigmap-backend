@@ -105,8 +105,7 @@ jobs:
           - image: zc-sigmap-eclaircissement
             dockerfile: ./sigmap-eclaircissement/Dockerfile
 
-          - image: zc-sigmap-report
-            dockerfile: ./sigmap-report/Dockerfile
+
 
     steps:
       - name: Checkout

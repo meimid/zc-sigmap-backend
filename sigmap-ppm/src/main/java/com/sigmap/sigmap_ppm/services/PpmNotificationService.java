@@ -14,8 +14,6 @@ import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.ComServiceImpl;
 import com.sigmap.common.ac.AcServiceImpl;
-import com.sigmap.common.keycloakAdmin.dto.UserDTO;
-import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,7 +38,6 @@ public class PpmNotificationService {
     @Autowired private AcServiceImpl acServiceImpl;
     @Autowired private ComServiceImpl comServiceImpl;
     @Autowired private ComRepository comRepository;
-    @Autowired private KeycloakAdminService keycloakAdminService;
     @Autowired private WhatsAppNotificationService whatsAppNotificationService;
 
     @Autowired private RuntimeService runtimeService;
@@ -66,22 +63,10 @@ public class PpmNotificationService {
         return tel1 != null && !tel1.isBlank() ? tel1 : ppm.getAc().getAdresse().getTel2();
     }
 
-    private UserDTO safeCpmpPresident(Com cpmp) {
-        if (cpmp == null || cpmp.getResponsableId() == null || cpmp.getResponsableId().isBlank()) return null;
-        try {
-            return keycloakAdminService.getBasicUserById(cpmp.getResponsableId());
-        } catch (Exception e) {
-            log.warn("[WHATSAPP] Impossible de récupérer le président de la commission {}: {}",
-                    cpmp.getId(), e.getMessage());
-            return null;
-        }
-    }
-
-    private String userName(UserDTO user, String defaultName) {
-        if (user == null) return defaultName;
-        String fullName = ((user.getFirstName() == null ? "" : user.getFirstName()) + " "
-                + (user.getLastName() == null ? "" : user.getLastName())).trim();
-        return fullName.isBlank() ? defaultName : fullName;
+    private String safeCommissionPhone(Com commission) {
+        if (commission == null || commission.getTheAdresse() == null) return null;
+        String tel1 = commission.getTheAdresse().getTel1();
+        return tel1 != null && !tel1.isBlank() ? tel1 : commission.getTheAdresse().getTel2();
     }
 
     private boolean isReturnedToCpmp(String rawDecision) {
@@ -90,13 +75,12 @@ public class PpmNotificationService {
         return "REPORT".equals(decision) || "COND_APPROVE".equals(decision);
     }
 
-    private void notifyCommissionPresident(Com commission, String defaultRecipientName,
-                                           String senderName, String reference,
-                                           String decision, String motif) {
-        UserDTO president = safeCpmpPresident(commission);
+    private void notifyCommission(Com commission, String defaultRecipientName,
+                                  String senderName, String reference,
+                                  String decision, String motif) {
         whatsAppNotificationService.sendDecisionNotification(
-                president != null ? president.getMobile() : null,
-                userName(president, defaultRecipientName),
+                safeCommissionPhone(commission),
+                safeName(commission, defaultRecipientName),
                 senderName,
                 reference,
                 decision,
@@ -158,9 +142,9 @@ public class PpmNotificationService {
             String acName = ppm.getAc() != null && ppm.getAc().getNom() != null
                     ? ppm.getAc().getNom() : "Autorité contractante";
 
-            notifyCommissionPresident(
+            notifyCommission(
                     cpmp,
-                    "Président de la CPMP",
+                    "CPMP",
                     acName,
                     ppm.getRef(),
                     "Dossier transmis au CPMP",
@@ -203,9 +187,9 @@ public class PpmNotificationService {
                     || "VALIDATE".equalsIgnoreCase(rawDecision)
                     || "TRUE".equalsIgnoreCase(rawDecision)) {
                 Com cncmp = comServiceImpl.findCNCMPP();
-                notifyCommissionPresident(
+                notifyCommission(
                         cncmp,
-                        "Président de la CNCMP",
+                        "CNCMP",
                         cpmpName,
                         ppm.getRef(),
                         decision,
@@ -272,9 +256,9 @@ public class PpmNotificationService {
 
             String rawDecision = rp != null ? rp.getDecision() : null;
             if (isReturnedToCpmp(rawDecision)) {
-                notifyCommissionPresident(
+                notifyCommission(
                         cpmp,
-                        "Président de la CPMP",
+                        "CPMP",
                         cncmpName,
                         ppm.getRef(),
                         decision,
@@ -346,15 +330,6 @@ public class PpmNotificationService {
 
             String decision = normalizeDecision(rp != null ? rp.getDecision() : null);
             String motif = normalizeMotif(rp != null ? rp.getObservation() : null);
-
-            notifyCommissionPresident(
-                    cncmp,
-                    "Président de la CNCMP",
-                    scsName,
-                    ppm.getRef(),
-                    decision,
-                    motif
-            );
 
             // ---- EMAIL ----
             mailService.sendCommissionDecisionNotificationEmail(
