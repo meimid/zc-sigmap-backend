@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.sigmap</groupId>
     <artifactId>sigmap-parent</artifactId>
-    <version>0.0.85</version>
+    <version>0.0.86</version>
     <packaging>pom</packaging>
     <modules>
         <!--    Libraries    -->

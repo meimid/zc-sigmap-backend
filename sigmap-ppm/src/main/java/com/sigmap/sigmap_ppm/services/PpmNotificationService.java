@@ -75,12 +75,10 @@ public class PpmNotificationService {
         return "REPORT".equals(decision) || "COND_APPROVE".equals(decision);
     }
 
-    private void notifyCommission(Com commission, String defaultRecipientName,
-                                  String senderName, String reference,
+    private void notifyCommission(Com commission, String senderName, String reference,
                                   String decision, String motif) {
         whatsAppNotificationService.sendDecisionNotification(
                 safeCommissionPhone(commission),
-                safeName(commission, defaultRecipientName),
                 senderName,
                 reference,
                 decision,
@@ -144,7 +142,6 @@ public class PpmNotificationService {
 
             notifyCommission(
                     cpmp,
-                    "CPMP",
                     acName,
                     ppm.getRef(),
                     "Dossier transmis au CPMP",
@@ -189,7 +186,6 @@ public class PpmNotificationService {
                 Com cncmp = comServiceImpl.findCNCMPP();
                 notifyCommission(
                         cncmp,
-                        "CNCMP",
                         cpmpName,
                         ppm.getRef(),
                         decision,
@@ -198,7 +194,6 @@ public class PpmNotificationService {
             } else {
                 whatsAppNotificationService.sendDecisionNotification(
                         safeAcPhone(ppm),
-                        ppm.getAc() != null ? ppm.getAc().getNom() : null,
                         cpmpName,
                         ppm.getRef(),
                         decision,
@@ -258,7 +253,6 @@ public class PpmNotificationService {
             if (isReturnedToCpmp(rawDecision)) {
                 notifyCommission(
                         cpmp,
-                        "CPMP",
                         cncmpName,
                         ppm.getRef(),
                         decision,
@@ -267,7 +261,6 @@ public class PpmNotificationService {
             } else {
                 whatsAppNotificationService.sendDecisionNotification(
                         safeAcPhone(ppm),
-                        ppm.getAc() != null ? ppm.getAc().getNom() : null,
                         cncmpName,
                         ppm.getRef(),
                         decision,

@@ -31,7 +31,7 @@ public class WhatsAppNotificationService {
             @Value("${whatsapp.graph-version:v23.0}") String graphVersion,
             @Value("${whatsapp.phone-number-id:}") String phoneNumberId,
             @Value("${whatsapp.access-token:}") String accessToken,
-            @Value("${whatsapp.template-name:notification_decision_marche}") String templateName,
+            @Value("${whatsapp.template-name:status_demande}") String templateName,
             @Value("${whatsapp.template-language:fr}") String templateLanguage,
             ObjectMapper objectMapper) {
         this.enabled = enabled;
@@ -50,8 +50,8 @@ public class WhatsAppNotificationService {
      * Best-effort notification: a missing phone/configuration or any Meta error is
      * logged and never propagated to the business workflow.
      */
-    public void sendDecisionNotification(String phone, String recipientName, String commission,
-                                         String reference, String decision, String comment) {
+    public void sendDecisionNotification(String phone, String commission, String reference,
+                                         String decision, String comment) {
         String normalizedPhone = normalizePhone(phone);
         if (normalizedPhone == null) {
             log.info("[WHATSAPP] Numéro absent, notification ignorée pour le dossier {}", reference);
@@ -77,7 +77,6 @@ public class WhatsAppNotificationService {
                             "components", List.of(Map.of(
                                     "type", "body",
                                     "parameters", List.of(
-                                            textParameter(valueOrDefault(recipientName, "Madame, Monsieur")),
                                             textParameter(valueOrDefault(commission, "Commission")),
                                             textParameter(valueOrDefault(reference, "N/A")),
                                             textParameter(valueOrDefault(decision, "Avis")),
