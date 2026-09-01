@@ -75,14 +75,15 @@ public class PpmNotificationService {
         return "REPORT".equals(decision) || "COND_APPROVE".equals(decision);
     }
 
-    private void notifyCommission(Com commission, String senderName, String reference,
-                                  String decision, String motif) {
+    private void notifyCommissionArrival(Com commission, String senderName, String reference) {
+        whatsAppNotificationService.sendArrivalNotification(
+                safeCommissionPhone(commission), senderName, reference);
+    }
+
+    private void notifyCommissionDecision(Com commission, String senderName, String reference,
+                                          String decision) {
         whatsAppNotificationService.sendDecisionNotification(
-                safeCommissionPhone(commission),
-                senderName,
-                reference,
-                decision,
-                motif
+                safeCommissionPhone(commission), senderName, reference, decision
         );
     }
 
@@ -140,13 +141,7 @@ public class PpmNotificationService {
             String acName = ppm.getAc() != null && ppm.getAc().getNom() != null
                     ? ppm.getAc().getNom() : "Autorité contractante";
 
-            notifyCommission(
-                    cpmp,
-                    acName,
-                    ppm.getRef(),
-                    "Dossier transmis au CPMP",
-                    "Le PPM a été validé et transmis par l'autorité contractante."
-            );
+            notifyCommissionArrival(cpmp, acName, ppm.getRef());
         } catch (Exception e) {
             log.warn("[WHATSAPP] Échec non bloquant AC→CPMP pour PPM {}-{}: {}",
                     ppmId, ppmVer, e.getMessage());
@@ -184,20 +179,13 @@ public class PpmNotificationService {
                     || "VALIDATE".equalsIgnoreCase(rawDecision)
                     || "TRUE".equalsIgnoreCase(rawDecision)) {
                 Com cncmp = comServiceImpl.findCNCMPP();
-                notifyCommission(
-                        cncmp,
-                        cpmpName,
-                        ppm.getRef(),
-                        decision,
-                        motif
-                );
+                notifyCommissionArrival(cncmp, cpmpName, ppm.getRef());
             } else {
                 whatsAppNotificationService.sendDecisionNotification(
                         safeAcPhone(ppm),
                         cpmpName,
                         ppm.getRef(),
-                        decision,
-                        motif
+                        decision
                 );
             }
 
@@ -251,20 +239,18 @@ public class PpmNotificationService {
 
             String rawDecision = rp != null ? rp.getDecision() : null;
             if (isReturnedToCpmp(rawDecision)) {
-                notifyCommission(
+                notifyCommissionDecision(
                         cpmp,
                         cncmpName,
                         ppm.getRef(),
-                        decision,
-                        motif
+                        decision
                 );
             } else {
                 whatsAppNotificationService.sendDecisionNotification(
                         safeAcPhone(ppm),
                         cncmpName,
                         ppm.getRef(),
-                        decision,
-                        motif
+                        decision
                 );
             }
 

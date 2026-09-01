@@ -142,5 +142,6 @@ whatsapp:
   graph-version: ${WHATSAPP_GRAPH_VERSION:v23.0}
   phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
   access-token: ${WHATSAPP_ACCESS_TOKEN:}
-  template-name: ${WHATSAPP_TEMPLATE_NAME:status_demande}
+  decision-template-name: ${WHATSAPP_DECISION_TEMPLATE_NAME:notification_decision_ppm}
+  arrival-template-name: ${WHATSAPP_ARRIVAL_TEMPLATE_NAME:notification_arrivee_ppm}
   template-language: ${WHATSAPP_TEMPLATE_LANGUAGE:fr}

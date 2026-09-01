@@ -21,7 +21,8 @@ public class WhatsAppNotificationService {
     private final String graphVersion;
     private final String phoneNumberId;
     private final String accessToken;
-    private final String templateName;
+    private final String decisionTemplateName;
+    private final String arrivalTemplateName;
     private final String templateLanguage;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -31,14 +32,16 @@ public class WhatsAppNotificationService {
             @Value("${whatsapp.graph-version:v23.0}") String graphVersion,
             @Value("${whatsapp.phone-number-id:}") String phoneNumberId,
             @Value("${whatsapp.access-token:}") String accessToken,
-            @Value("${whatsapp.template-name:status_demande}") String templateName,
+            @Value("${whatsapp.decision-template-name:notification_decision_ppm}") String decisionTemplateName,
+            @Value("${whatsapp.arrival-template-name:notification_arrivee_ppm}") String arrivalTemplateName,
             @Value("${whatsapp.template-language:fr}") String templateLanguage,
             ObjectMapper objectMapper) {
         this.enabled = enabled;
         this.graphVersion = graphVersion;
         this.phoneNumberId = phoneNumberId;
         this.accessToken = accessToken;
-        this.templateName = templateName;
+        this.decisionTemplateName = decisionTemplateName;
+        this.arrivalTemplateName = arrivalTemplateName;
         this.templateLanguage = templateLanguage;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
@@ -50,8 +53,23 @@ public class WhatsAppNotificationService {
      * Best-effort notification: a missing phone/configuration or any Meta error is
      * logged and never propagated to the business workflow.
      */
-    public void sendDecisionNotification(String phone, String commission, String reference,
-                                         String decision, String comment) {
+    public void sendDecisionNotification(String phone, String commission, String reference, String decision) {
+        sendTemplate(phone, decisionTemplateName, reference, List.of(
+                textParameter("commission", valueOrDefault(commission, "Commission")),
+                textParameter("ppm_reference", valueOrDefault(reference, "N/A")),
+                textParameter("decision", valueOrDefault(decision, "Avis"))
+        ));
+    }
+
+    public void sendArrivalNotification(String phone, String sender, String reference) {
+        sendTemplate(phone, arrivalTemplateName, reference, List.of(
+                textParameter("ppm_reference", valueOrDefault(reference, "N/A")),
+                textParameter("emetteur", valueOrDefault(sender, "Autorité contractante"))
+        ));
+    }
+
+    private void sendTemplate(String phone, String templateName, String reference,
+                              List<Map<String, String>> parameters) {
         String normalizedPhone = normalizePhone(phone);
         if (normalizedPhone == null) {
             log.info("[WHATSAPP] Numéro absent, notification ignorée pour le dossier {}", reference);
@@ -76,12 +94,7 @@ public class WhatsAppNotificationService {
                             "language", Map.of("code", templateLanguage),
                             "components", List.of(Map.of(
                                     "type", "body",
-                                    "parameters", List.of(
-                                            textParameter(valueOrDefault(commission, "Commission")),
-                                            textParameter(valueOrDefault(reference, "N/A")),
-                                            textParameter(valueOrDefault(decision, "Avis")),
-                                            textParameter(valueOrDefault(comment, "Aucun commentaire"))
-                                    )
+                                    "parameters", parameters
                             ))
                     )
             );
@@ -109,8 +122,8 @@ public class WhatsAppNotificationService {
         }
     }
 
-    private Map<String, String> textParameter(String value) {
-        return Map.of("type", "text", "text", value);
+    private Map<String, String> textParameter(String parameterName, String value) {
+        return Map.of("type", "text", "parameter_name", parameterName, "text", value);
     }
 
     private String normalizePhone(String phone) {
